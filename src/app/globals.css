@@ -2,64 +2,305 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
 :root {
-  --mapei-red: #E30613;
-  --mapei-dark: #1a1a2e;
-  --mapei-card: #16213e;
-  --mapei-accent: #0f3460;
+  --red: #E30613;
+  --red-dark: #b30000;
+  --dark: #0d0d1a;
+  --card: #13131f;
+  --card2: #1a1a2e;
+  --border: #2a2a40;
+  --text: #ffffff;
+  --muted: #8888aa;
+  --green: #22c55e;
+  --yellow: #f59e0b;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html { font-size: 16px; }
+
 body {
-  background: var(--mapei-dark);
-  color: white;
-  font-family: 'Segoe UI', sans-serif;
+  background: var(--dark);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
 }
 
-.btn-primary {
-  background: var(--mapei-red);
-  color: white;
-  padding: 10px 24px;
-  border-radius: 8px;
+h1, h2, h3 { font-family: 'Rajdhani', sans-serif; letter-spacing: 0.5px; }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 10px;
   border: none;
   cursor: pointer;
   font-size: 15px;
   font-weight: 600;
-  transition: opacity 0.2s;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s;
+  width: 100%;
+  min-height: 48px;
+  -webkit-tap-highlight-color: transparent;
 }
-.btn-primary:hover { opacity: 0.85; }
+
+.btn-primary {
+  background: var(--red);
+  color: white;
+}
+.btn-primary:hover { background: var(--red-dark); transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(0); }
 
 .btn-secondary {
-  background: #2a2a4a;
+  background: var(--card2);
   color: white;
-  padding: 10px 24px;
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: #222236; }
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 13px;
+  min-height: 36px;
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 20px;
+  border: 1px solid var(--border);
+}
+
+/* ── Inputs ── */
+input, select, textarea {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 12px 16px;
+  border-radius: 10px;
+  width: 100%;
+  font-size: 16px; /* prevents zoom on iOS */
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--red);
+}
+textarea { resize: vertical; min-height: 80px; }
+
+/* ── Badges ── */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-red { background: rgba(227,6,19,0.15); color: var(--red); border: 1px solid rgba(227,6,19,0.3); }
+.badge-green { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+.badge-yellow { background: rgba(245,158,11,0.15); color: var(--yellow); border: 1px solid rgba(245,158,11,0.3); }
+.badge-blue { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+
+/* ── Page wrapper ── */
+.page {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+  min-height: 100dvh;
+}
+
+.page-wide {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+/* ── Nav bar ── */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* ── Tab bar ── */
+.tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex-wrap: nowrap;
+}
+.tabs::-webkit-scrollbar { display: none; }
+
+.tab {
+  padding: 8px 14px;
   border-radius: 8px;
-  border: 1px solid #444;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
+}
+.tab-active { background: var(--red); color: white; }
+.tab-inactive { background: var(--card2); color: var(--muted); border: 1px solid var(--border); }
+
+/* ── Progress bar ── */
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--red);
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+/* ── Timer ── */
+.timer {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 2px solid var(--border);
+  min-width: 60px;
+  text-align: center;
+}
+.timer-warning { color: var(--yellow); border-color: var(--yellow); }
+.timer-danger { color: var(--red); border-color: var(--red); animation: pulse 0.5s ease infinite alternate; }
+
+@keyframes pulse { from { opacity: 1; } to { opacity: 0.5; } }
+
+/* ── Answer options ── */
+.option {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background: var(--card2);
+  color: var(--text);
+  text-align: left;
   cursor: pointer;
   font-size: 15px;
-  transition: background 0.2s;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  -webkit-tap-highlight-color: transparent;
 }
-.btn-secondary:hover { background: #3a3a5a; }
+.option:hover:not(:disabled) { border-color: var(--red); background: rgba(227,6,19,0.08); }
+.option-correct { background: rgba(34,197,94,0.1) !important; border-color: var(--green) !important; }
+.option-wrong { background: rgba(227,6,19,0.1) !important; border-color: var(--red) !important; }
+.option-key {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
 
-.card {
-  background: var(--mapei-card);
+/* ── Stats grid ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.stat-card {
+  background: var(--card);
   border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #2a2a4a;
+  padding: 14px 10px;
+  text-align: center;
+  border: 1px solid var(--border);
 }
 
-input, select {
-  background: #2a2a4a;
-  border: 1px solid #444;
-  color: white;
-  padding: 10px 14px;
-  border-radius: 8px;
-  width: 100%;
-  font-size: 15px;
+/* ── Action grid ── */
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
-input:focus, select:focus {
-  outline: 2px solid var(--mapei-red);
-  border-color: transparent;
+
+.action-card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 18px 14px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.action-card:hover { border-color: var(--red); transform: translateY(-2px); }
+.action-card:active { transform: translateY(0); }
+
+/* ── Table ── */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 500px; }
+th { padding: 10px 8px; text-align: left; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+td { padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+
+/* ── Explanation box ── */
+.explanation {
+  background: rgba(59,130,246,0.08);
+  border: 1px solid rgba(59,130,246,0.25);
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ── Empty state ── */
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+}
+
+/* ── Divider ── */
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+/* ── Scrollable frame ── */
+.scroll-frame {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: 60vh;
+}
+
+/* ── Responsive tweaks ── */
+@media (min-width: 640px) {
+  .page { padding: 24px; }
+  .page-wide { padding: 24px; }
+  .btn { font-size: 16px; }
+  html { font-size: 17px; }
 }
