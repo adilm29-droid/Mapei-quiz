@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 
-const LEVEL_CLASS = { Beginner: 'level-beginner', Intermediate: 'level-intermediate', Advanced: 'level-advanced' }
+const LEVEL_CLASS = { Foundation: 'level-foundation', Practitioner: 'level-practitioner', Advanced: 'level-advanced', Expert: 'level-expert' }
 
 export default function Admin() {
   const [user, setUser] = useState(null)
@@ -16,9 +16,9 @@ export default function Admin() {
   const [totalAttempts, setTotalAttempts] = useState(0)
   const [scrapeUrl, setScrapeUrl] = useState('https://www.mapei.com/ae/en/products-and-solutions')
   const [scrapeStatus, setScrapeStatus] = useState('')
-  const [newQ, setNewQ] = useState({ question: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_answer: 'a', difficulty: 'Beginner', category: 'General Products', explanation: '' })
+  const [newQ, setNewQ] = useState({ question: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_answer: 'a', difficulty: 'Foundation', category: 'General Products', explanation: '' })
   const [assignTo, setAssignTo] = useState('')
-  const [assignLevel, setAssignLevel] = useState('Beginner')
+  const [assignLevel, setAssignLevel] = useState('Foundation')
   const [assignDue, setAssignDue] = useState('')
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -67,7 +67,7 @@ export default function Admin() {
   async function addManualQ() {
     if (!newQ.question) { alert('Please enter a question'); return }
     await supabase.from('questions').insert([{ ...newQ, approved: true }])
-    setNewQ({ question: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_answer: 'a', difficulty: 'Beginner', category: 'General Products', explanation: '' })
+    setNewQ({ question: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_answer: 'a', difficulty: 'Foundation', category: 'General Products', explanation: '' })
     setTotalQuestions(t => t + 1)
     alert('Question added!')
   }
@@ -122,7 +122,7 @@ export default function Admin() {
       {/* Navbar */}
       <div className="navbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src="/mapei-logo.png" alt="Mapei" style={{ height: 26 }} />
+          <img src="/lapizblue-logo.png" alt="Lapiz Blue" style={{ height: 26 }} />
           <div>
             <div style={{ fontFamily: 'Rajdhani', fontSize: 18, fontWeight: 700 }}>Admin Panel</div>
           </div>
@@ -253,7 +253,7 @@ export default function Admin() {
                 <div>
                   <label style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, marginBottom: 6, display: 'block' }}>Difficulty</label>
                   <select value={newQ.difficulty} onChange={e => setNewQ({ ...newQ, difficulty: e.target.value })}>
-                    <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
+                    <option>Foundation</option><option>Practitioner</option><option>Advanced</option><option>Expert</option>
                   </select>
                 </div>
                 <div>

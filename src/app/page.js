@@ -1,7 +1,49 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useRouter } from 'next/navigation'
+
+function Particles({ count = 40 }) {
+  const canvasRef = useRef(null)
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    let animId
+    const particles = []
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight }
+    resize()
+    window.addEventListener('resize', resize)
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 1.5 + 0.5,
+        dx: (Math.random() - 0.5) * 0.3,
+        dy: (Math.random() - 0.5) * 0.3,
+        o: Math.random() * 0.3 + 0.1,
+      })
+    }
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      for (const p of particles) {
+        p.x += p.dx; p.y += p.dy
+        if (p.x < 0) p.x = canvas.width
+        if (p.x > canvas.width) p.x = 0
+        if (p.y < 0) p.y = canvas.height
+        if (p.y > canvas.height) p.y = 0
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(255,255,255,${p.o})`
+        ctx.fill()
+      }
+      animId = requestAnimationFrame(draw)
+    }
+    draw()
+    return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize) }
+  }, [count])
+  return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }} />
+}
 
 export default function Home() {
   const [mode, setMode] = useState('login')
@@ -47,96 +89,90 @@ export default function Home() {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: 20,
-      background: 'linear-gradient(160deg, #0a1628 0%, #1a2f4e 50%, #0f1f38 100%)',
+      padding: 24,
       position: 'relative',
       overflow: 'hidden',
     }}>
+      {/* Animated gradient background */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'linear-gradient(160deg, #0a1628, #1a2f4e, #0f1f38, #162a45)',
+        backgroundSize: '400% 400%',
+        animation: 'gradientShift 12s ease infinite',
+        zIndex: 0,
+      }} />
+
+      {/* Particles */}
+      <Particles count={45} />
+
       {/* Geometric pattern overlay */}
       <div style={{
         position: 'absolute',
         inset: 0,
         backgroundImage: `
-          linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px),
-          linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)
+          linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)
         `,
-        backgroundSize: '60px 60px, 60px 60px, 20px 20px, 20px 20px',
-        animation: 'patternDrift 20s linear infinite',
+        backgroundSize: '50px 50px',
+        animation: 'patternDrift 25s linear infinite',
         pointerEvents: 'none',
+        zIndex: 1,
       }} />
 
-      {/* Subtle glow behind logos */}
-      <div style={{
-        position: 'absolute',
-        top: '15%',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: 400,
-        height: 400,
-        borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(227,6,19,0.06) 0%, transparent 70%)',
-        pointerEvents: 'none',
-      }} />
-
-      {/* Logos */}
-      <div className="animate-fade" style={{ textAlign: 'center', marginBottom: 28, position: 'relative', zIndex: 1 }}>
+      {/* Logo - only Lapiz Blue */}
+      <div className="login-logo-anim" style={{ textAlign: 'center', marginBottom: 36, position: 'relative', zIndex: 2 }}>
         <img src="/lapizblue-logo.png" alt="Lapiz Blue General Trading"
-          style={{ height: 90, objectFit: 'contain', filter: 'brightness(1.8) contrast(0.9)', marginBottom: 0 }} />
-
-        {/* Divider line */}
-        <div style={{ width: 60, height: 1, background: 'rgba(255,255,255,0.2)', margin: '10px auto' }} />
-
-        <img src="/mapei-logo.png" alt="Mapei"
-          style={{ height: 140, objectFit: 'contain', marginTop: 0 }} />
+          style={{ height: 110, objectFit: 'contain', filter: 'brightness(1.8) contrast(0.9)' }} />
       </div>
 
       {/* Title */}
-      <div className="animate-fade" style={{ textAlign: 'center', marginBottom: 8, position: 'relative', zIndex: 1 }}>
+      <div className="login-logo-anim" style={{ textAlign: 'center', marginBottom: 10, position: 'relative', zIndex: 2 }}>
         <div style={{
-          fontSize: 18,
+          fontSize: 20,
           fontWeight: 800,
           color: '#ffffff',
-          letterSpacing: 6,
+          letterSpacing: 8,
           textTransform: 'uppercase',
           fontFamily: 'Rajdhani, sans-serif',
         }}>
           Staff Training Quiz
         </div>
+        {/* Red accent line */}
+        <div style={{ width: 50, height: 3, background: '#E30613', margin: '12px auto', borderRadius: 2 }} />
         <div style={{
           fontSize: 13,
-          color: 'rgba(255,255,255,0.5)',
-          marginTop: 6,
+          color: 'rgba(255,255,255,0.45)',
           fontWeight: 400,
-          letterSpacing: 1,
+          letterSpacing: 1.5,
         }}>
           Mapei Product Knowledge Assessment
         </div>
       </div>
 
       {/* Stats chips */}
-      <div className="animate-fade" style={{
+      <div className="login-card-anim" style={{
         display: 'flex',
         gap: 10,
-        marginTop: 20,
-        marginBottom: 28,
+        marginTop: 24,
+        marginBottom: 36,
         flexWrap: 'wrap',
         justifyContent: 'center',
         position: 'relative',
-        zIndex: 1,
+        zIndex: 2,
       }}>
-        {['100+ Questions', '3 Levels', '6 Categories'].map(chip => (
+        {['100+ Questions', '4 Levels', '6 Categories'].map(chip => (
           <div key={chip} style={{
-            padding: '6px 16px',
+            padding: '7px 18px',
             borderRadius: 20,
-            border: '1px solid rgba(255,255,255,0.15)',
-            color: 'rgba(255,255,255,0.75)',
+            border: '1px solid rgba(227,6,19,0.3)',
+            color: 'rgba(255,255,255,0.8)',
             fontSize: 12,
-            fontWeight: 500,
+            fontWeight: 600,
             letterSpacing: 0.5,
             backdropFilter: 'blur(4px)',
-            background: 'rgba(255,255,255,0.04)',
+            background: 'rgba(227,6,19,0.08)',
+            boxShadow: '0 0 12px rgba(227,6,19,0.1)',
           }}>
             {chip}
           </div>
@@ -144,35 +180,37 @@ export default function Home() {
       </div>
 
       {/* Login card - frosted glass */}
-      <div className="animate-fade-up" style={{
+      <div className="login-card-anim" style={{
         width: '100%',
-        maxWidth: 400,
-        background: 'rgba(255,255,255,0.07)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        borderRadius: 20,
-        padding: 28,
+        maxWidth: 420,
+        background: 'rgba(255,255,255,0.06)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        borderRadius: 22,
+        padding: 34,
         border: '1px solid rgba(255,255,255,0.12)',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08)',
         position: 'relative',
-        zIndex: 1,
+        zIndex: 2,
+        borderTop: '3px solid #E30613',
       }}>
         <h2 style={{
-          marginBottom: 22,
-          fontSize: 22,
+          marginBottom: 26,
+          fontSize: 24,
           fontFamily: 'Rajdhani',
           fontWeight: 700,
           color: '#ffffff',
           textAlign: 'center',
+          letterSpacing: 1,
         }}>
           {mode === 'login' ? 'Sign In' : 'Create Account'}
         </h2>
 
         {error && (
           <div className="animate-scale" style={{
-            background: error.includes('successfully') ? 'rgba(34,197,94,0.15)' : 'rgba(227,6,19,0.15)',
-            border: `1px solid ${error.includes('successfully') ? 'rgba(34,197,94,0.4)' : 'rgba(227,6,19,0.4)'}`,
-            borderRadius: 12, padding: '10px 14px', marginBottom: 16,
+            background: error.includes('successfully') ? 'rgba(34,197,94,0.12)' : 'rgba(227,6,19,0.12)',
+            border: `1px solid ${error.includes('successfully') ? 'rgba(34,197,94,0.35)' : 'rgba(227,6,19,0.35)'}`,
+            borderRadius: 12, padding: '10px 14px', marginBottom: 18,
             color: error.includes('successfully') ? '#4ade80' : '#ff6b6b', fontSize: 13, fontWeight: 500,
             textAlign: 'center',
           }}>
@@ -180,9 +218,9 @@ export default function Home() {
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
           <div style={{ position: 'relative' }}>
-            <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.35)', fontSize: 16, pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)', fontSize: 15, pointerEvents: 'none' }}>
               👤
             </div>
             <input
@@ -191,19 +229,11 @@ export default function Home() {
               onChange={e => setUsername(e.target.value)}
               autoCapitalize="none"
               autoCorrect="off"
-              style={{
-                background: 'rgba(0,0,0,0.3)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: '#ffffff',
-                padding: '14px 16px 14px 42px',
-                borderRadius: 12,
-                fontSize: 15,
-                width: '100%',
-              }}
+              className="login-input"
             />
           </div>
           <div style={{ position: 'relative' }}>
-            <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.35)', fontSize: 16, pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)', fontSize: 15, pointerEvents: 'none' }}>
               🔒
             </div>
             <input
@@ -212,24 +242,17 @@ export default function Home() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && (mode === 'login' ? handleLogin() : handleRegister())}
-              style={{
-                background: 'rgba(0,0,0,0.3)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: '#ffffff',
-                padding: '14px 16px 14px 42px',
-                borderRadius: 12,
-                fontSize: 15,
-                width: '100%',
-              }}
+              className="login-input"
             />
           </div>
         </div>
 
         <button onClick={mode === 'login' ? handleLogin : handleRegister} disabled={loading}
+          className="login-btn-shimmer"
           style={{
             width: '100%',
-            padding: '14px 24px',
-            borderRadius: 12,
+            padding: '15px 24px',
+            borderRadius: 14,
             border: 'none',
             background: '#E30613',
             color: 'white',
@@ -239,63 +262,114 @@ export default function Home() {
             cursor: loading ? 'not-allowed' : 'pointer',
             opacity: loading ? 0.7 : 1,
             transition: 'all 0.25s',
-            boxShadow: '0 4px 20px rgba(227,6,19,0.35)',
+            boxShadow: '0 4px 24px rgba(227,6,19,0.4)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
-            minHeight: 52,
+            minHeight: 54,
+            position: 'relative',
+            overflow: 'hidden',
           }}>
           {loading ? <><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'white' }} /> Please wait...</> : (mode === 'login' ? 'Login' : 'Create Account')}
         </button>
 
         {/* Toggle mode link */}
-        <div style={{ textAlign: 'center', marginTop: 18 }}>
+        <div style={{ textAlign: 'center', marginTop: 22 }}>
           <button
             onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError('') }}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'rgba(255,255,255,0.55)',
-              fontSize: 14,
-              cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif',
-              transition: 'color 0.2s',
-            }}
-            onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.9)'}
-            onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.55)'}
+            className="login-toggle-link"
           >
-            {mode === 'login' ? 'Create New Account' : '← Back to Login'}
+            {mode === 'login' ? 'Create New Account' : 'Back to Login'}
           </button>
         </div>
       </div>
 
       {/* Footer */}
       <div style={{
-        marginTop: 40,
+        marginTop: 48,
         textAlign: 'center',
-        fontSize: 11,
-        color: 'rgba(255,255,255,0.3)',
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.4)',
         letterSpacing: 0.5,
         position: 'relative',
-        zIndex: 1,
+        zIndex: 2,
       }}>
-        Made by Adil Mohamed&nbsp;&nbsp;|&nbsp;&nbsp;LapizBlue &times; Mapei &copy; 2026
+        Made by Adil Mohamed&nbsp;&nbsp;|&nbsp;&nbsp;LapizBlue &copy; 2026
       </div>
 
-      {/* CSS animation for pattern */}
       <style jsx>{`
+        @keyframes gradientShift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
         @keyframes patternDrift {
           0% { transform: translate(0, 0); }
-          100% { transform: translate(60px, 60px); }
+          100% { transform: translate(50px, 50px); }
         }
-        input::placeholder {
-          color: rgba(255,255,255,0.3) !important;
+        @keyframes loginFadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        input:focus {
-          border-color: rgba(227,6,19,0.5) !important;
-          box-shadow: 0 0 0 3px rgba(227,6,19,0.1) !important;
-          outline: none !important;
+        @keyframes loginSlideUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes btnShimmer {
+          0% { left: -100%; }
+          100% { left: 100%; }
+        }
+        .login-logo-anim {
+          animation: loginFadeIn 0.8s ease both;
+        }
+        .login-card-anim {
+          animation: loginSlideUp 0.7s ease 0.3s both;
+        }
+        .login-input {
+          background: rgba(0,0,0,0.35);
+          border: 1.5px solid rgba(255,255,255,0.08);
+          color: #ffffff;
+          padding: 15px 16px 15px 44px;
+          border-radius: 12px;
+          font-size: 15px;
+          width: 100%;
+          font-family: 'Inter', sans-serif;
+          transition: all 0.3s;
+        }
+        .login-input::placeholder {
+          color: rgba(255,255,255,0.28);
+        }
+        .login-input:focus {
+          outline: none;
+          border-color: rgba(227,6,19,0.6);
+          box-shadow: 0 0 0 4px rgba(227,6,19,0.12), 0 0 20px rgba(227,6,19,0.08);
+        }
+        .login-btn-shimmer::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 60%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+          animation: btnShimmer 3s ease-in-out infinite;
+        }
+        .login-toggle-link {
+          background: none;
+          border: none;
+          color: rgba(255,255,255,0.5);
+          font-size: 14px;
+          cursor: pointer;
+          font-family: 'Inter', sans-serif;
+          transition: all 0.2s;
+          text-decoration: none;
+          padding: 4px 0;
+          border-bottom: 1px solid transparent;
+        }
+        .login-toggle-link:hover {
+          color: #ffffff;
+          border-bottom-color: rgba(255,255,255,0.5);
         }
       `}</style>
     </div>

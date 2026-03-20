@@ -9,7 +9,7 @@ const ALL_BADGES = [
   { name: 'Level Up', icon: '⬆️', desc: 'Advance to next difficulty level' },
   { name: 'On Fire', icon: '🔥', desc: 'Complete 5 quizzes' },
   { name: 'Weekly Champion', icon: '🏆', desc: 'Win the weekly challenge' },
-  { name: 'Master', icon: '👑', desc: 'Pass Advanced level' },
+  { name: 'Master', icon: '👑', desc: 'Pass Expert level' },
 ]
 
 export default function Badges() {

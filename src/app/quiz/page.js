@@ -3,7 +3,8 @@ import { useState, useEffect, Suspense } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-const LEVEL_CLASS = { Beginner: 'level-beginner', Intermediate: 'level-intermediate', Advanced: 'level-advanced' }
+const LEVELS = ['Foundation', 'Practitioner', 'Advanced', 'Expert']
+const LEVEL_CLASS = { Foundation: 'level-foundation', Practitioner: 'level-practitioner', Advanced: 'level-advanced', Expert: 'level-expert' }
 
 const MOTIVATIONAL = {
   high: [
@@ -58,7 +59,7 @@ function QuizContent() {
   const [showExplanation, setShowExplanation] = useState(false)
   const [timer, setTimer] = useState(30)
   const [done, setDone] = useState(false)
-  const [level, setLevel] = useState('Beginner')
+  const [level, setLevel] = useState('Foundation')
   const [category, setCategory] = useState('All')
   const [started, setStarted] = useState(false)
   const [newLevel, setNewLevel] = useState(null)
@@ -112,11 +113,10 @@ function QuizContent() {
   async function finishQuiz() {
     const total = questions.length
     const pct = Math.round((score / total) * 100)
-    const levels = ['Beginner', 'Intermediate', 'Advanced']
-    const idx = levels.indexOf(level)
+    const idx = LEVELS.indexOf(level)
     let nl = level
-    if (pct >= 80 && idx < 2) nl = levels[idx + 1]
-    else if (pct < 50 && idx > 0) nl = levels[idx - 1]
+    if (pct >= 80 && idx < LEVELS.length - 1) nl = LEVELS[idx + 1]
+    else if (pct < 50 && idx > 0) nl = LEVELS[idx - 1]
     setNewLevel(nl !== level ? nl : null)
     await supabase.from('scores').insert([{ user_id: user.id, score: pct, level, category, total_questions: total }])
     const assignmentId = searchParams.get('assignment')
@@ -139,11 +139,11 @@ function QuizContent() {
       <div className="page">
         <div className="card animate-fade" style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Difficulty</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {['Beginner', 'Intermediate', 'Advanced'].map(l => (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+            {LEVELS.map(l => (
               <button key={l} onClick={() => setLevel(l)}
                 className={`badge ${LEVEL_CLASS[l]}`}
-                style={{ cursor: 'pointer', padding: '10px 16px', fontSize: 14, fontWeight: 600, border: level === l ? '2px solid' : '1px solid', opacity: level === l ? 1 : 0.5, borderRadius: 10, flex: 1, textAlign: 'center' }}>
+                style={{ cursor: 'pointer', padding: '10px 16px', fontSize: 14, fontWeight: 600, border: level === l ? '2px solid' : '1px solid', opacity: level === l ? 1 : 0.5, borderRadius: 10, textAlign: 'center' }}>
                 {l}
               </button>
             ))}
@@ -194,7 +194,6 @@ function QuizContent() {
             <div className={`badge ${LEVEL_CLASS[level]}`} style={{ marginTop: 8, padding: '6px 16px', fontSize: 14 }}>{level}</div>
           </div>
 
-          {/* Motivational message */}
           <div className="card animate-fade stagger-2" style={{ marginTop: 24, marginBottom: 16, textAlign: 'center' }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>{pct >= 80 ? '🌟' : pct >= 50 ? '💪' : '📚'}</div>
             <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', lineHeight: 1.5 }}>{motivation}</div>
@@ -222,7 +221,6 @@ function QuizContent() {
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--dark)', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
       <div style={{ padding: '14px 20px', background: 'var(--card)', borderBottom: '1px solid var(--border)', boxShadow: '0 1px 8px rgba(0,0,0,0.04)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div>
@@ -239,14 +237,12 @@ function QuizContent() {
         </div>
       </div>
 
-      {/* Question */}
       <div style={{ flex: 1, padding: 16, overflow: 'auto' }}>
         <div className="card animate-fade" style={{ marginBottom: 16 }}>
           <span className="badge badge-blue" style={{ marginBottom: 10, display: 'inline-block' }}>{q.category}</span>
           <div style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.6 }}>{q.question}</div>
         </div>
 
-        {/* Options */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {options.map((opt, i) => {
             let cls = 'option'
@@ -269,7 +265,6 @@ function QuizContent() {
           })}
         </div>
 
-        {/* Explanation */}
         {showExplanation && (
           <div className="animate-fade-up" style={{ marginTop: 16 }}>
             <div className="explanation">

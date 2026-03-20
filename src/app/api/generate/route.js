@@ -16,7 +16,7 @@ export async function POST(request) {
     // Try multiple models
     const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-pro']
     const CATEGORIES = ['Adhesives', 'Waterproofing', 'Flooring', 'Grouts and Mortars', 'Concrete Repair', 'General Products']
-    const LEVELS = ['Beginner', 'Intermediate', 'Advanced']
+    const LEVELS = ['Foundation', 'Practitioner', 'Advanced', 'Expert']
     let totalSaved = 0
     let workingModel = null
 

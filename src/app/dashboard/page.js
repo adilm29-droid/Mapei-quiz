@@ -4,8 +4,8 @@ import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 
 const BADGE_ICONS = { 'First Quiz': '🎯', 'Perfect Score': '💯', 'Level Up': '⬆️', 'On Fire': '🔥', 'Weekly Champion': '🏆', 'Master': '👑' }
-const LEVEL_COLOR = { Beginner: 'var(--green)', Intermediate: 'var(--yellow)', Advanced: 'var(--red)' }
-const LEVEL_CLASS = { Beginner: 'level-beginner', Intermediate: 'level-intermediate', Advanced: 'level-advanced' }
+const LEVEL_COLOR = { Foundation: 'var(--green)', Practitioner: 'var(--yellow)', Advanced: 'var(--red)', Expert: '#8b5cf6' }
+const LEVEL_CLASS = { Foundation: 'level-foundation', Practitioner: 'level-practitioner', Advanced: 'level-advanced', Expert: 'level-expert' }
 
 function ProgressRing({ percent, size = 100, stroke = 8, color = 'var(--red)' }) {
   const radius = (size - stroke) / 2
@@ -66,7 +66,7 @@ export default function Dashboard() {
   if (loading) return (
     <div style={{ background: 'var(--dark)', minHeight: '100dvh' }}>
       <div className="navbar">
-        <div style={{ fontFamily: 'Rajdhani', fontSize: 22, fontWeight: 700, color: 'var(--red)' }}>MAPEI Quiz</div>
+        <div style={{ fontFamily: 'Rajdhani', fontSize: 22, fontWeight: 700, color: 'var(--red)' }}>Staff Quiz</div>
         <div />
       </div>
       <div className="loading-screen">
@@ -77,16 +77,15 @@ export default function Dashboard() {
   )
 
   const bestScore = scores.length ? Math.max(...scores.map(s => s.score)) : 0
-  const avgScore = scores.length ? Math.round(scores.reduce((a, s) => a + s.score, 0) / scores.length) : 0
-  const currentLevel = scores.length ? scores[0].level : 'Beginner'
+  const currentLevel = scores.length ? scores[0].level : 'Foundation'
 
   return (
     <div style={{ background: 'var(--dark)', minHeight: '100dvh' }}>
       {/* Navbar */}
       <div className="navbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src="/mapei-logo.png" alt="Mapei" style={{ height: 28 }} />
-          <span style={{ fontFamily: 'Rajdhani', fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Quiz</span>
+          <img src="/lapizblue-logo.png" alt="Lapiz Blue" style={{ height: 28 }} />
+          <span style={{ fontFamily: 'Rajdhani', fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Staff Quiz</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--red)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14 }}>
@@ -114,7 +113,7 @@ export default function Dashboard() {
             {assignments.map(a => (
               <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '8px 0' }}>
                 <div>
-                  <span className={`badge ${LEVEL_CLASS[a.quiz_level]}`}>{a.quiz_level}</span>
+                  <span className={`badge ${LEVEL_CLASS[a.quiz_level] || ''}`}>{a.quiz_level}</span>
                   {a.due_date && <span style={{ fontSize: 12, color: 'var(--muted)', marginLeft: 8 }}>Due {a.due_date}</span>}
                 </div>
                 <button className="btn btn-primary btn-sm" style={{ width: 'auto' }}
@@ -134,7 +133,7 @@ export default function Dashboard() {
           </div>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div className="stat-card" style={{ flex: 1 }}>
-              <div style={{ fontSize: 24, fontWeight: 800, color: LEVEL_COLOR[currentLevel], fontFamily: 'Rajdhani' }}>{currentLevel}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: LEVEL_COLOR[currentLevel] || 'var(--green)', fontFamily: 'Rajdhani' }}>{currentLevel}</div>
               <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>Current Level</div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
@@ -176,7 +175,7 @@ export default function Dashboard() {
                   <div style={{ fontSize: 12, color: 'var(--muted)' }}>{s.category || 'General'}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span className={`badge ${LEVEL_CLASS[s.level]}`}>{s.level}</span>
+                  <span className={`badge ${LEVEL_CLASS[s.level] || ''}`}>{s.level}</span>
                   <div style={{ fontFamily: 'Rajdhani', fontSize: 22, fontWeight: 800, color: s.score >= 80 ? 'var(--green)' : s.score >= 50 ? 'var(--yellow)' : 'var(--red)' }}>
                     {s.score}%
                   </div>
@@ -200,7 +199,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Footer spacing */}
         <div style={{ height: 20 }} />
       </div>
     </div>

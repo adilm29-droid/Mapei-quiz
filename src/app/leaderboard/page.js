@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 
 const MEDALS = ['🥇', '🥈', '🥉']
 const MEDAL_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32']
-const LEVEL_CLASS = { Beginner: 'level-beginner', Intermediate: 'level-intermediate', Advanced: 'level-advanced' }
+const LEVEL_CLASS = { Foundation: 'level-foundation', Practitioner: 'level-practitioner', Advanced: 'level-advanced', Expert: 'level-expert' }
 
 export default function Leaderboard() {
   const [data, setData] = useState([])
