@@ -7,12 +7,12 @@
 :root {
   --red: #E30613;
   --red-dark: #b30000;
-  --dark: #0d0d1a;
-  --card: #13131f;
-  --card2: #1a1a2e;
-  --border: #2a2a40;
-  --text: #ffffff;
-  --muted: #8888aa;
+  --dark: #e8ecf1;
+  --card: #ffffff;
+  --card2: #f0f3f7;
+  --border: #d0d5dd;
+  --text: #1a1a2e;
+  --muted: #6b7280;
   --green: #22c55e;
   --yellow: #f59e0b;
 }
@@ -59,11 +59,11 @@ h1, h2, h3 { font-family: 'Rajdhani', sans-serif; letter-spacing: 0.5px; }
 .btn-primary:active { transform: translateY(0); }
 
 .btn-secondary {
-  background: var(--card2);
-  color: white;
-  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--red);
+  border: 1px solid var(--red);
 }
-.btn-secondary:hover { background: #222236; }
+.btn-secondary:hover { background: rgba(227,6,19,0.06); }
 
 .btn-sm {
   padding: 8px 16px;

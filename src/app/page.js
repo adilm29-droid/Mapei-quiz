@@ -42,10 +42,13 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'var(--dark)' }}>
-      {/* Logo */}
+      {/* Logos */}
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <div style={{ fontSize: 52, fontWeight: 900, color: 'var(--red)', fontFamily: 'Rajdhani', letterSpacing: 4, lineHeight: 1 }}>MAPEI</div>
-        <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6, letterSpacing: 2, textTransform: 'uppercase' }}>Staff Training Quiz</div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0, marginBottom: 12 }}>
+          <img src="/lapizblue-logo.png" alt="Lapiz Blue General Trading" style={{ height: 100, objectFit: 'contain', marginTop: 20 }} />
+          <img src="/mapei-logo.png" alt="Mapei" style={{ height: 180, objectFit: 'contain', marginTop: -20 }} />
+        </div>
+        <div style={{ fontSize: 13, color: '#000000', fontWeight: 700, marginTop: 6, letterSpacing: 2, textTransform: 'uppercase' }}>Staff Training Quiz</div>
       </div>
 
       <div className="card" style={{ width: '100%', maxWidth: 400 }}>
@@ -90,9 +93,10 @@ export default function Home() {
           {mode === 'login' ? '+ Create New Account' : '← Back to Login'}
         </button>
 
-        <div style={{ marginTop: 20, textAlign: 'center', fontSize: 12, color: 'var(--muted)' }}>
-          Admin: admin / admin123
-        </div>
+      </div>
+
+      <div style={{ marginTop: 32, textAlign: 'center', fontSize: 11, color: 'var(--muted)', letterSpacing: 1 }}>
+        Made by Adil Mohamed
       </div>
     </div>
   )
