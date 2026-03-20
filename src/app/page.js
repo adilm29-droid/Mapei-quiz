@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useRouter } from 'next/navigation'
 
-function Particles({ count = 40 }) {
+function Particles({ count = 50 }) {
   const canvasRef = useRef(null)
   useEffect(() => {
     const canvas = canvasRef.current
@@ -18,10 +18,10 @@ function Particles({ count = 40 }) {
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        r: Math.random() * 1.5 + 0.5,
+        r: Math.random() * 2 + 0.8,
         dx: (Math.random() - 0.5) * 0.3,
         dy: (Math.random() - 0.5) * 0.3,
-        o: Math.random() * 0.3 + 0.1,
+        o: Math.random() * 0.4 + 0.15,
       })
     }
     function draw() {
@@ -45,22 +45,62 @@ function Particles({ count = 40 }) {
   return <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }} />
 }
 
+function Toast({ message, type, onClose }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 3500)
+    return () => clearTimeout(t)
+  }, [onClose])
+  const isSuccess = type === 'success'
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 24,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      zIndex: 1000,
+      animation: 'toastIn 0.4s ease both',
+    }}>
+      <div style={{
+        background: isSuccess ? 'rgba(34,197,94,0.95)' : 'rgba(227,6,19,0.95)',
+        color: 'white',
+        padding: '12px 24px',
+        borderRadius: 12,
+        fontSize: 14,
+        fontWeight: 600,
+        fontFamily: 'Inter, sans-serif',
+        boxShadow: `0 8px 30px ${isSuccess ? 'rgba(34,197,94,0.3)' : 'rgba(227,6,19,0.3)'}`,
+        backdropFilter: 'blur(10px)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        whiteSpace: 'nowrap',
+      }}>
+        {isSuccess ? '✓' : '✕'} {message}
+      </div>
+    </div>
+  )
+}
+
 export default function Home() {
   const [mode, setMode] = useState('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
+  function showToast(message, type = 'error') {
+    setToast({ message, type })
+  }
+
   async function handleLogin() {
-    if (!username || !password) { setError('Please enter username and password'); return }
-    setLoading(true); setError('')
+    if (!username || !password) { showToast('Please enter username and password'); return }
+    setLoading(true)
     const { data, error } = await supabase
       .from('users').select('*')
       .eq('username', username).eq('password', password).single()
     if (error || !data) {
-      setError('Invalid username or password')
+      showToast('Invalid username or password')
     } else {
       localStorage.setItem('user', JSON.stringify(data))
       router.push(data.role === 'admin' ? '/admin' : '/dashboard')
@@ -69,15 +109,15 @@ export default function Home() {
   }
 
   async function handleRegister() {
-    if (!username || !password) { setError('Please fill in all fields'); return }
-    if (password.length < 4) { setError('Password must be at least 4 characters'); return }
-    setLoading(true); setError('')
+    if (!username || !password) { showToast('Please fill in all fields'); return }
+    if (password.length < 4) { showToast('Password must be at least 4 characters'); return }
+    setLoading(true)
     const { error } = await supabase.from('users').insert([{ username, password, role: 'user' }])
     if (error) {
-      setError('Username already exists')
+      showToast('Username already exists')
     } else {
       setMode('login')
-      setError('Account created successfully! Please login.')
+      showToast('Account created successfully! Please login.', 'success')
     }
     setLoading(false)
   }
@@ -93,6 +133,9 @@ export default function Home() {
       position: 'relative',
       overflow: 'hidden',
     }}>
+      {/* Toast notification */}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
       {/* Animated gradient background */}
       <div style={{
         position: 'absolute',
@@ -104,7 +147,7 @@ export default function Home() {
       }} />
 
       {/* Particles */}
-      <Particles count={45} />
+      <Particles count={50} />
 
       {/* Geometric pattern overlay */}
       <div style={{
@@ -116,6 +159,18 @@ export default function Home() {
         `,
         backgroundSize: '50px 50px',
         animation: 'patternDrift 25s linear infinite',
+        pointerEvents: 'none',
+        zIndex: 1,
+      }} />
+
+      {/* Red vignette glow at bottom */}
+      <div style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: '35%',
+        background: 'radial-gradient(ellipse at 50% 100%, rgba(227,6,19,0.06) 0%, transparent 70%)',
         pointerEvents: 'none',
         zIndex: 1,
       }} />
@@ -153,7 +208,7 @@ export default function Home() {
       {/* Stats chips */}
       <div className="login-card-anim" style={{
         display: 'flex',
-        gap: 10,
+        gap: 12,
         marginTop: 24,
         marginBottom: 36,
         flexWrap: 'wrap',
@@ -161,18 +216,20 @@ export default function Home() {
         position: 'relative',
         zIndex: 2,
       }}>
-        {['100+ Questions', '4 Levels', '6 Categories'].map(chip => (
-          <div key={chip} style={{
-            padding: '7px 18px',
-            borderRadius: 20,
+        {['100+ Questions', '4 Levels', 'Certified Training'].map(chip => (
+          <div key={chip} className="stat-chip" style={{
+            padding: '9px 22px',
+            borderRadius: 22,
             border: '1px solid rgba(227,6,19,0.3)',
-            color: 'rgba(255,255,255,0.8)',
-            fontSize: 12,
+            color: 'rgba(255,255,255,0.85)',
+            fontSize: 13,
             fontWeight: 600,
             letterSpacing: 0.5,
             backdropFilter: 'blur(4px)',
             background: 'rgba(227,6,19,0.08)',
             boxShadow: '0 0 12px rgba(227,6,19,0.1)',
+            transition: 'all 0.3s',
+            cursor: 'default',
           }}>
             {chip}
           </div>
@@ -182,20 +239,20 @@ export default function Home() {
       {/* Login card - frosted glass */}
       <div className="login-card-anim" style={{
         width: '100%',
-        maxWidth: 420,
+        maxWidth: 440,
         background: 'rgba(255,255,255,0.06)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
         borderRadius: 22,
-        padding: 34,
+        padding: 36,
         border: '1px solid rgba(255,255,255,0.12)',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08)',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.35), 0 0 60px rgba(255,255,255,0.02), inset 0 1px 0 rgba(255,255,255,0.08)',
         position: 'relative',
         zIndex: 2,
         borderTop: '3px solid #E30613',
       }}>
         <h2 style={{
-          marginBottom: 26,
+          marginBottom: 28,
           fontSize: 24,
           fontFamily: 'Rajdhani',
           fontWeight: 700,
@@ -206,19 +263,7 @@ export default function Home() {
           {mode === 'login' ? 'Sign In' : 'Create Account'}
         </h2>
 
-        {error && (
-          <div className="animate-scale" style={{
-            background: error.includes('successfully') ? 'rgba(34,197,94,0.12)' : 'rgba(227,6,19,0.12)',
-            border: `1px solid ${error.includes('successfully') ? 'rgba(34,197,94,0.35)' : 'rgba(227,6,19,0.35)'}`,
-            borderRadius: 12, padding: '10px 14px', marginBottom: 18,
-            color: error.includes('successfully') ? '#4ade80' : '#ff6b6b', fontSize: 13, fontWeight: 500,
-            textAlign: 'center',
-          }}>
-            {error}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 26 }}>
           <div style={{ position: 'relative' }}>
             <div style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)', fontSize: 15, pointerEvents: 'none' }}>
               👤
@@ -266,18 +311,31 @@ export default function Home() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 8,
+            gap: 10,
             minHeight: 54,
             position: 'relative',
             overflow: 'hidden',
           }}>
-          {loading ? <><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'white' }} /> Please wait...</> : (mode === 'login' ? 'Login' : 'Create Account')}
+          {loading ? (
+            <><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'white' }} /> Please wait...</>
+          ) : (
+            mode === 'login' ? 'Login' : 'Create Account'
+          )}
         </button>
 
+        {/* Secure login text */}
+        <div style={{ textAlign: 'center', marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>🔐</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>Secure Login</span>
+        </div>
+
+        {/* Divider */}
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '18px 0' }} />
+
         {/* Toggle mode link */}
-        <div style={{ textAlign: 'center', marginTop: 22 }}>
+        <div style={{ textAlign: 'center' }}>
           <button
-            onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError('') }}
+            onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setToast(null) }}
             className="login-toggle-link"
           >
             {mode === 'login' ? 'Create New Account' : 'Back to Login'}
@@ -294,8 +352,11 @@ export default function Home() {
         letterSpacing: 0.5,
         position: 'relative',
         zIndex: 2,
+        lineHeight: 1.8,
       }}>
         Made by Adil Mohamed&nbsp;&nbsp;|&nbsp;&nbsp;LapizBlue &copy; 2026
+        <br />
+        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>v1.0&nbsp;&nbsp;|&nbsp;&nbsp;Internal Use Only</span>
       </div>
 
       <style jsx>{`
@@ -319,6 +380,10 @@ export default function Home() {
         @keyframes btnShimmer {
           0% { left: -100%; }
           100% { left: 100%; }
+        }
+        @keyframes toastIn {
+          from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+          to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
         .login-logo-anim {
           animation: loginFadeIn 0.8s ease both;
@@ -370,6 +435,11 @@ export default function Home() {
         .login-toggle-link:hover {
           color: #ffffff;
           border-bottom-color: rgba(255,255,255,0.5);
+        }
+        .stat-chip:hover {
+          box-shadow: 0 0 20px rgba(227,6,19,0.25);
+          border-color: rgba(227,6,19,0.5);
+          background: rgba(227,6,19,0.14);
         }
       `}</style>
     </div>
