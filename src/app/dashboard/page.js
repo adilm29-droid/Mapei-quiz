@@ -85,7 +85,6 @@ export default function Dashboard() {
             { icon: '🎮', label: 'Start Quiz', sub: currentLevel, action: () => router.push('/quiz'), highlight: true },
             { icon: '🏆', label: 'Leaderboard', sub: 'Top scores', action: () => router.push('/leaderboard') },
             { icon: '🎖️', label: 'My Badges', sub: `${badges.length} earned`, action: () => router.push('/badges') },
-            { icon: '📊', label: 'Reports', sub: 'Export scores', action: () => router.push('/reports') },
           ].map(item => (
             <div key={item.label} className="action-card" onClick={item.action}
               style={{ borderColor: item.highlight ? 'var(--red)' : 'var(--border)' }}>
