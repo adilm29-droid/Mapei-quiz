@@ -20,7 +20,7 @@ function Particles({ count = 25 }) {
 
 export default function Admin() {
   const [user, setUser] = useState(null)
-  const [tab, setTab] = useState('pending')
+  const [tab, setTab] = useState('approvals')
   const [pending, setPending] = useState([])
   const [reviewIndex, setReviewIndex] = useState(0)
   const [users, setUsers] = useState([])
@@ -34,6 +34,7 @@ export default function Admin() {
   const [assignLevel, setAssignLevel] = useState('Foundation')
   const [assignDue, setAssignDue] = useState('')
   const [loading, setLoading] = useState(true)
+  const [pendingUsers, setPendingUsers] = useState([])
   const router = useRouter()
 
   useEffect(() => {
@@ -44,15 +45,17 @@ export default function Admin() {
 
   async function loadAll() {
     setLoading(true)
-    const [{ data: p }, { data: u }, { data: s }, { count: qCount }, { count: aCount }] = await Promise.all([
+    const [{ data: p }, { data: u }, { data: s }, { count: qCount }, { count: aCount }, { data: pu }] = await Promise.all([
       supabase.from('questions').select('*').eq('approved', false).order('created_at', { ascending: false }),
       supabase.from('users').select('*').order('created_at', { ascending: false }),
       supabase.from('scores').select('*, users(username)').order('date', { ascending: false }).limit(50),
       supabase.from('questions').select('*', { count: 'exact', head: true }).eq('approved', true),
-      supabase.from('scores').select('*', { count: 'exact', head: true })
+      supabase.from('scores').select('*', { count: 'exact', head: true }),
+      supabase.from('users').select('*').eq('status', 'pending').order('created_at', { ascending: false })
     ])
     setPending(p || []); setUsers(u || []); setScores(s || [])
     setTotalQuestions(qCount || 0); setTotalAttempts(aCount || 0)
+    setPendingUsers(pu || [])
     setReviewIndex(0); setLoading(false)
   }
 
@@ -62,6 +65,19 @@ export default function Admin() {
   async function addManualQ() { if (!newQ.question) { alert('Please enter a question'); return }; await supabase.from('questions').insert([{ ...newQ, approved: true }]); setNewQ({ question: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_answer: 'a', difficulty: 'Foundation', category: 'General Products', explanation: '' }); setTotalQuestions(t => t + 1); alert('Question added!') }
   async function scrapeAndGenerate() { setScrapeStatus('Generating questions...'); try { const res = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: scrapeUrl }) }); const data = await res.json(); setScrapeStatus(data.message || 'Done!'); loadAll() } catch (e) { setScrapeStatus('Error: ' + e.message) } }
   async function assignQuiz() { const { data: u } = await supabase.from('users').select('id').eq('username', assignTo).single(); if (!u) { alert('User not found'); return }; await supabase.from('assignments').insert([{ assigned_by: user?.id, assigned_to: u.id, quiz_level: assignLevel, due_date: assignDue || null, completed: false }]); alert(`Quiz assigned to ${assignTo}!`); setAssignTo('') }
+
+  async function approveUser(u) {
+    await supabase.from('users').update({ status: 'approved' }).eq('id', u.id)
+    try { await fetch('/api/send-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'approved', data: { first_name: u.first_name, email: u.email, username: u.username } }) }) } catch (e) {}
+    setPendingUsers(prev => prev.filter(p => p.id !== u.id))
+    alert(`${u.first_name} ${u.last_name} approved! Welcome email sent.`)
+  }
+
+  async function rejectUser(u) {
+    await supabase.from('users').delete().eq('id', u.id)
+    setPendingUsers(prev => prev.filter(p => p.id !== u.id))
+    alert(`${u.username} rejected and removed.`)
+  }
 
   if (!user) return null
   if (loading) return (
@@ -73,7 +89,8 @@ export default function Admin() {
   )
 
   const TABS = [
-    { key: 'pending', label: `Pending (${pending.length})` },
+    { key: 'approvals', label: `Approvals (${pendingUsers.length})` },
+    { key: 'pending', label: `Questions (${pending.length})` },
     { key: 'add', label: 'Add Question' },
     { key: 'scrape', label: 'AI Generate' },
     { key: 'users', label: 'Users' },
@@ -120,6 +137,32 @@ export default function Admin() {
           <div className="tabs animate-fade stagger-1" style={{ marginBottom: 18 }}>
             {TABS.map(t => (<button key={t.key} className={`tab ${tab === t.key ? 'tab-active' : 'tab-inactive'}`} onClick={() => setTab(t.key)}>{t.label}</button>))}
           </div>
+
+          {tab === 'approvals' && (
+            <div className="animate-fade">
+              {pendingUsers.length === 0 ? (
+                <div className="card empty"><div style={{ fontSize: 48, marginBottom: 12 }}>✅</div><div style={{ fontSize: 16, fontWeight: 600 }}>No pending registrations</div><div style={{ color: 'var(--muted)', marginTop: 4 }}>All caught up!</div></div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {pendingUsers.map(u => (
+                    <div key={u.id} className="card" style={{ padding: 18 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{u.first_name} {u.last_name}</div>
+                          <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 2 }}>{u.email}</div>
+                          <div style={{ fontSize: 12, color: 'var(--muted)' }}>@{u.username} &middot; {new Date(u.created_at).toLocaleDateString()}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button className="btn btn-sm" style={{ width: 'auto', background: 'rgba(34,197,94,0.15)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)' }} onClick={() => approveUser(u)}>Approve</button>
+                          <button className="btn btn-sm" style={{ width: 'auto', background: 'rgba(227,6,19,0.15)', color: '#ff6b6b', border: '1px solid rgba(227,6,19,0.3)' }} onClick={() => rejectUser(u)}>Reject</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {tab === 'pending' && (
             <div className="animate-fade">
