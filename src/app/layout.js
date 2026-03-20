@@ -1,8 +1,8 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'Mapei Quiz',
-  description: 'Internal training quiz for Mapei staff',
+  title: 'LapizBlue Staff Quiz',
+  description: 'Staff training quiz - Mapei Product Knowledge Assessment',
 }
 
 export default function RootLayout({ children }) {
