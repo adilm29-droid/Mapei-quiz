@@ -5,6 +5,9 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT UNIQUE NOT NULL,
   password TEXT NOT NULL,
   role TEXT DEFAULT 'user',
+  xp INTEGER DEFAULT 0,
+  rank TEXT DEFAULT 'Apprentice',
+  avatar INTEGER DEFAULT 0,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -71,6 +74,11 @@ CREATE TABLE IF NOT EXISTS certificates (
 INSERT INTO users (username, password, role)
 VALUES ('admin', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3', 'admin')
 ON CONFLICT (username) DO NOTHING;
+
+-- Migration: add new columns to existing users table
+ALTER TABLE users ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS rank TEXT DEFAULT 'Apprentice';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar INTEGER DEFAULT 0;
 
 -- Disable RLS for simplicity (internal app)
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;

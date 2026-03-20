@@ -92,6 +92,7 @@ export default function Admin() {
           <div style={{ fontFamily: 'Rajdhani', fontSize: 18, fontWeight: 700 }}>Admin Panel</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <span style={{ fontSize: 12, color: 'var(--muted)' }}>{user.username}</span>
+            <button className="btn btn-ghost btn-sm" style={{ width: 'auto' }} onClick={() => router.push('/reports')}>Reports</button>
             <button className="btn btn-ghost btn-sm" style={{ width: 'auto' }} onClick={() => router.push('/leaderboard')}>Leaderboard</button>
             <button className="btn btn-ghost btn-sm" style={{ width: 'auto' }} onClick={() => { localStorage.removeItem('user'); router.push('/') }}>Logout</button>
           </div>

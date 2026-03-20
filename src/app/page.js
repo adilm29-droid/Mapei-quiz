@@ -103,7 +103,9 @@ export default function Home() {
       showToast('Invalid username or password')
     } else {
       localStorage.setItem('user', JSON.stringify(data))
-      router.push(data.role === 'admin' ? '/admin' : '/dashboard')
+      if (data.role === 'admin') router.push('/admin')
+      else if (!data.avatar || data.avatar === 0) router.push('/avatar')
+      else router.push('/dashboard')
     }
     setLoading(false)
   }
