@@ -41,20 +41,21 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [regSuccess, setRegSuccess] = useState(false)
   const [regEmail, setRegEmail] = useState('')
+  const [loginError, setLoginError] = useState('')
   const router = useRouter()
 
   function showToast(message, type = 'error') { setToast({ message, type }) }
 
   async function handleLogin() {
-    if (!username || !password) { showToast('Please enter username and password'); return }
-    setLoading(true)
+    if (!username || !password) { setLoginError('Please enter username and password'); showToast('Please enter username and password'); return }
+    setLoginError(''); setLoading(true)
     const { data, error } = await supabase.from('users').select('*').eq('username', username).eq('password', password).single()
     if (error || !data) {
-      showToast('Invalid username or password')
+      setLoginError('Invalid username or password'); showToast('Invalid username or password')
     } else if (data.status === 'pending') {
-      showToast('Your account is pending admin approval. Check your email for updates.')
+      setLoginError('Your account is pending admin approval.'); showToast('Your account is pending admin approval. Check your email for updates.')
     } else if (data.status === 'rejected') {
-      showToast('Your account was not approved. Contact adil@lapizblue.com')
+      setLoginError('Your account was not approved. Contact adil@lapizblue.com'); showToast('Your account was not approved. Contact adil@lapizblue.com')
     } else {
       localStorage.setItem('user', JSON.stringify(data))
       if (data.role === 'admin') router.push('/admin')
@@ -182,11 +183,23 @@ export default function Home() {
                   onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.08)'; e.target.style.boxShadow = 'none' }} />
               </div>
             </div>
+            {loginError && (
+              <div style={{ background: 'rgba(227,6,19,0.12)', border: '1px solid rgba(227,6,19,0.35)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, animation: 'loginShake 0.4s ease' }}>
+                <span style={{ color: '#ff6b6b', fontSize: 16, flexShrink: 0 }}>&#x26A0;</span>
+                <span style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 500, lineHeight: 1.4 }}>{loginError}</span>
+              </div>
+            )}
             <button onClick={handleLogin} disabled={loading} className="login-btn-shimmer"
               style={{ width: '100%', padding: '15px 24px', borderRadius: 14, border: 'none', background: '#E30613', color: 'white', fontSize: 16, fontWeight: 700, fontFamily: 'Inter,sans-serif', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'all 0.25s', boxShadow: '0 4px 24px rgba(227,6,19,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, minHeight: 54, position: 'relative', overflow: 'hidden' }}>
               {loading ? <><div className="spinner" style={{ width: 20, height: 20, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'white' }} /> Please wait...</> : 'Login'}
             </button>
-            <div style={{ textAlign: 'center', marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+            <div style={{ textAlign: 'center', marginTop: 12 }}>
+              <button onClick={() => showToast('Contact adil@lapizblue.com to reset your password', 'error')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 13, cursor: 'pointer', fontFamily: 'Inter,sans-serif', transition: 'color 0.2s', padding: '4px 0' }}
+                onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.7)'} onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.4)'}>
+                Forgot Password?
+              </button>
+            </div>
+            <div style={{ textAlign: 'center', marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
               <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>🔐</span>
               <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', letterSpacing: 0.5 }}>Secure Login</span>
             </div>
@@ -241,6 +254,7 @@ export default function Home() {
         @keyframes loginSlideUp { from { opacity:0;transform:translateY(30px); } to { opacity:1;transform:translateY(0); } }
         @keyframes btnShimmer { 0% { left:-100%; } 100% { left:100%; } }
         @keyframes toastIn { from { opacity:0;transform:translateX(-50%) translateY(-20px); } to { opacity:1;transform:translateX(-50%) translateY(0); } }
+        @keyframes loginShake { 0%,100% { transform:translateX(0); } 20%,60% { transform:translateX(-6px); } 40%,80% { transform:translateX(6px); } }
         .login-logo-anim { animation: loginFadeIn 0.8s ease both; }
         .login-card-anim { animation: loginSlideUp 0.7s ease 0.3s both; }
         .login-btn-shimmer::after { content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);animation:btnShimmer 3s ease-in-out infinite; }

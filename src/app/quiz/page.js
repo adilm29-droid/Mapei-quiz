@@ -247,12 +247,13 @@ function QuizContent() {
             })}
           </div>
           {showExplanation && (
-            <div className="animate-fade-up" style={{ marginTop: 16 }}>
-              <div className="explanation">
-                <div style={{ fontWeight: 700, marginBottom: 6, color: selected === q.correct_answer ? '#4ade80' : '#ff6b6b', fontSize: 15 }}>
-                  {selected === q.correct_answer ? 'Correct! +5 XP' : `Incorrect - Answer: ${q.correct_answer.toUpperCase()}`}
+            <div className="animate-feedback" style={{ marginTop: 16 }}>
+              <div className={`explanation ${selected === q.correct_answer ? 'explanation-correct' : 'explanation-wrong'}`}>
+                <div style={{ fontWeight: 700, marginBottom: 8, color: selected === q.correct_answer ? '#4ade80' : '#ff6b6b', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 20 }}>{selected === q.correct_answer ? '✓' : '✕'}</span>
+                  {selected === q.correct_answer ? 'Correct! +5 XP' : `Incorrect — Answer: ${q.correct_answer.toUpperCase()}`}
                 </div>
-                {q.explanation && <div style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.6 }}>{q.explanation}</div>}
+                {q.explanation && <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, lineHeight: 1.7, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 10, marginTop: 6 }}>{q.explanation}</div>}
               </div>
               <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={nextQuestion}>
                 {current + 1 >= total ? 'See Results' : 'Next Question'}

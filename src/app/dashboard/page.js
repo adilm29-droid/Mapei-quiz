@@ -80,7 +80,42 @@ export default function Dashboard() {
         <div style={{ fontFamily: 'Rajdhani', fontSize: 18, fontWeight: 700 }}>Dashboard</div>
         <div style={{ width: 60 }} />
       </div>
-      <div className="loading-screen"><div className="spinner" /><span>Loading dashboard...</span></div>
+      <div className="page">
+        {/* Skeleton hero card */}
+        <div className="card animate-fade" style={{ marginBottom: 20, padding: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+            <div className="skeleton-pulse" style={{ width: 70, height: 70, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div className="skeleton-pulse" style={{ height: 12, width: '40%', background: 'rgba(255,255,255,0.06)', borderRadius: 6, marginBottom: 10 }} />
+              <div className="skeleton-pulse" style={{ height: 20, width: '60%', background: 'rgba(255,255,255,0.06)', borderRadius: 6, marginBottom: 10 }} />
+              <div className="skeleton-pulse" style={{ height: 14, width: '35%', background: 'rgba(255,255,255,0.06)', borderRadius: 10 }} />
+            </div>
+          </div>
+          <div className="skeleton-pulse" style={{ height: 8, width: '100%', background: 'rgba(255,255,255,0.06)', borderRadius: 99, marginTop: 16 }} />
+        </div>
+        {/* Skeleton stats row */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+          {[0,1,2,3].map(i => (
+            <div key={i} className="stat-card" style={{ padding: 18 }}>
+              <div className="skeleton-pulse" style={{ height: 22, width: '60%', background: 'rgba(255,255,255,0.06)', borderRadius: 6, margin: '0 auto 8px' }} />
+              <div className="skeleton-pulse" style={{ height: 10, width: '80%', background: 'rgba(255,255,255,0.06)', borderRadius: 6, margin: '0 auto' }} />
+            </div>
+          ))}
+        </div>
+        {/* Skeleton action cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+          {[0,1,2,3].map(i => (
+            <div key={i} className="card" style={{ padding: 22, textAlign: 'center' }}>
+              <div className="skeleton-pulse" style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', margin: '0 auto 10px' }} />
+              <div className="skeleton-pulse" style={{ height: 14, width: '70%', background: 'rgba(255,255,255,0.06)', borderRadius: 6, margin: '0 auto' }} />
+            </div>
+          ))}
+        </div>
+      </div>
+      <style jsx>{`
+        @keyframes skeletonShimmer { 0% { opacity: 0.4; } 50% { opacity: 0.8; } 100% { opacity: 0.4; } }
+        .skeleton-pulse { animation: skeletonShimmer 1.5s ease-in-out infinite; }
+      `}</style>
     </div>
   )
 
@@ -128,6 +163,12 @@ export default function Dashboard() {
               </div>
             )}
           </div>
+
+          {/* Start Quiz CTA */}
+          <button className="btn btn-primary animate-fade stagger-1" onClick={() => router.push('/quiz')}
+            style={{ marginBottom: 20, fontSize: 18, padding: '16px 28px', minHeight: 58, boxShadow: '0 6px 28px rgba(227,6,19,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            🚀 Start Quiz
+          </button>
 
           {/* Assignments */}
           {assignments.length > 0 && (
