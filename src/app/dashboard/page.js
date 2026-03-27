@@ -254,7 +254,7 @@ export default function Dashboard() {
               { icon: '🚀', label: 'Start Quiz', action: () => router.push('/quiz') },
               { icon: '🏆', label: 'Leaderboard', action: () => router.push('/leaderboard') },
               { icon: '📊', label: 'My Reports', action: () => router.push('/reports') },
-              { icon: '🎖️', label: 'Badges', action: () => router.push('/badges') },
+              { icon: '👤', label: 'Profile', action: () => router.push('/profile') },
             ].map(item => (
               <div key={item.label} className="action-card card-hover" onClick={item.action}>
                 <div style={{ fontSize: 28, marginBottom: 6 }}>{item.icon}</div>

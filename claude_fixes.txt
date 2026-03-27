@@ -1,0 +1,78 @@
+MAPEI QUIZ QA — CLAUDE FIX LIST
+Generated: 27 March 2026 14:28
+Score: 84% Grade: B+
+============================================================
+
+Fix the following issues found in QA testing:
+
+1. [MEDIUM] Performance — Page load time (3.47s)
+   Issue: 3.47s — target under 2s
+   Fix: Optimize images, enable Vercel edge caching, lazy load components
+
+2. [LOW] SEO — Favicon
+   Issue: Missing — looks unprofessional
+   Fix: Add LapizBlue favicon to /public/favicon.ico
+
+3. [MEDIUM] Functional — Admin tab 'Pending'
+   Issue: Missing
+   Fix: Add Pending tab to admin panel
+
+4. [MEDIUM] Functional — Dashboard: Start Quiz button
+   Issue: Not found
+   Fix: Add Start Quiz button to dashboard
+
+5. [MEDIUM] Functional — Dashboard: Logout button
+   Issue: Not found
+   Fix: Add Logout button to dashboard
+
+6. [MEDIUM] Functional — Dashboard: Stats visible
+   Issue: Not found
+   Fix: Add Stats visible to dashboard
+
+7. [MEDIUM] Functional — Timer visible
+   Issue: Not visible
+   Fix: Make timer more prominent
+
+8. [MEDIUM] UX — Button tap targets (2 too small)
+   Issue: 2 buttons under 44px
+   Fix: Set min-height: 48px on all buttons in globals.css
+
+9. [MEDIUM] UX — Navigation (0 elements)
+   Issue: 0 nav elements
+   Fix: Add clear navigation to all main sections
+
+10. [LOW] Cross-Browser — Firefox
+   Issue: Not installed or unavailable — test manually
+   Fix: Test manually at mapei-quiz.vercel.app in Firefox
+
+11. [MEDIUM] Feature Gap — Multi-Brand Support
+   Issue: Missing vs competitors: Multi-Brand Support
+   Fix: Expand quiz to cover all LapizBlue brands
+
+12. [MEDIUM] Feature Gap — Password Reset Flow
+   Issue: Missing vs competitors: Password Reset Flow
+   Fix: Build proper password reset email flow
+
+13. [MEDIUM] Feature Gap — User Profile Page
+   Issue: Missing vs competitors: User Profile Page
+   Fix: Add dedicated /profile page with edit settings
+
+14. [MEDIUM] Feature Gap — Bulk Question Import
+   Issue: Missing vs competitors: Bulk Question Import
+   Fix: Add CSV bulk import for 1000+ questions in admin
+
+15. [MEDIUM] Feature Gap — Question Search/Filter
+   Issue: Missing vs competitors: Question Search/Filter
+   Fix: Add search and filter to admin question bank
+
+16. [MEDIUM] Feature Gap — Two-factor Auth
+   Issue: Missing vs competitors: Two-factor Auth
+   Fix: Add 2FA for admin accounts
+
+17. [MEDIUM] Feature Gap — Offline/PWA
+   Issue: Missing vs competitors: Offline/PWA
+   Fix: Consider PWA for offline quiz support
+
+
+After all fixes:
+git add . && git commit -m 'QA fixes v2' && git push

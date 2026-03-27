@@ -35,6 +35,9 @@ export default function Admin() {
   const [assignDue, setAssignDue] = useState('')
   const [loading, setLoading] = useState(true)
   const [pendingUsers, setPendingUsers] = useState([])
+  const [csvStatus, setCsvStatus] = useState('')
+  const [csvCount, setCsvCount] = useState(0)
+  const csvRef = useRef(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -73,6 +76,48 @@ export default function Admin() {
     alert(`${u.first_name} ${u.last_name} approved! Welcome email sent.`)
   }
 
+  async function handleCsvImport(e) {
+    const file = e.target.files?.[0]; if (!file) return
+    setCsvStatus('Parsing CSV...'); setCsvCount(0)
+    const text = await file.text()
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length < 2) { setCsvStatus('Error: CSV file is empty or has no data rows'); return }
+    const header = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/"/g, ''))
+    const requiredCols = ['question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer', 'difficulty', 'category']
+    const missing = requiredCols.filter(c => !header.includes(c))
+    if (missing.length > 0) { setCsvStatus(`Error: Missing columns: ${missing.join(', ')}`); return }
+    const rows = []
+    for (let i = 1; i < lines.length; i++) {
+      const vals = []; let inQuote = false; let cur = ''
+      for (const ch of lines[i]) {
+        if (ch === '"') { inQuote = !inQuote } else if (ch === ',' && !inQuote) { vals.push(cur.trim()); cur = '' } else { cur += ch }
+      }
+      vals.push(cur.trim())
+      if (vals.length < header.length) continue
+      const obj = {}; header.forEach((h, idx) => { obj[h] = vals[idx]?.replace(/^"|"$/g, '') || '' })
+      if (!obj.question) continue
+      rows.push({
+        question: obj.question, option_a: obj.option_a, option_b: obj.option_b,
+        option_c: obj.option_c, option_d: obj.option_d,
+        correct_answer: (obj.correct_answer || 'a').toLowerCase(),
+        difficulty: obj.difficulty || 'Foundation', category: obj.category || 'General Products',
+        explanation: obj.explanation || '', approved: true,
+      })
+    }
+    if (rows.length === 0) { setCsvStatus('Error: No valid question rows found'); return }
+    setCsvStatus(`Importing ${rows.length} questions...`)
+    const batchSize = 50; let inserted = 0
+    for (let i = 0; i < rows.length; i += batchSize) {
+      const batch = rows.slice(i, i + batchSize)
+      const { error } = await supabase.from('questions').insert(batch)
+      if (error) { setCsvStatus(`Error at row ${i + 1}: ${error.message}`); return }
+      inserted += batch.length; setCsvCount(inserted)
+    }
+    setCsvStatus(`Successfully imported ${inserted} questions!`)
+    setCsvCount(inserted); setTotalQuestions(t => t + inserted)
+    if (csvRef.current) csvRef.current.value = ''
+  }
+
   async function rejectUser(u) {
     await supabase.from('users').delete().eq('id', u.id)
     setPendingUsers(prev => prev.filter(p => p.id !== u.id))
@@ -96,6 +141,7 @@ export default function Admin() {
     { key: 'users', label: 'Users' },
     { key: 'scores', label: 'Scores' },
     { key: 'assign', label: 'Assign' },
+    { key: 'csv', label: 'CSV Import' },
   ]
   const currentQ = pending[reviewIndex]
   const avgScore = scores.length ? Math.round(scores.reduce((a, s) => a + s.score, 0) / scores.length) : 0
@@ -282,6 +328,29 @@ export default function Admin() {
                 <div><label style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, display: 'block' }}>Due Date</label><input type="date" value={assignDue} onChange={e => setAssignDue(e.target.value)} /></div>
                 <button className="btn btn-primary" onClick={assignQuiz}>Assign Quiz</button>
               </div>
+            </div>
+          )}
+
+          {tab === 'csv' && (
+            <div className="card animate-fade">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ fontSize: 28 }}>📁</div>
+                <div><div style={{ fontFamily: 'Rajdhani', fontSize: 20, fontWeight: 700 }}>Bulk CSV Import</div><div style={{ color: 'var(--muted)', fontSize: 13 }}>Upload a CSV file to import questions in bulk</div></div>
+              </div>
+              <div className="explanation" style={{ marginBottom: 16, fontSize: 12, lineHeight: 1.8 }}>
+                <strong>Required CSV columns:</strong><br />
+                question, option_a, option_b, option_c, option_d, correct_answer, difficulty, category, explanation
+                <br /><strong>correct_answer:</strong> a, b, c, or d
+                <br /><strong>difficulty:</strong> Foundation, Practitioner, Advanced, or Expert
+              </div>
+              <input ref={csvRef} type="file" accept=".csv" onChange={handleCsvImport}
+                style={{ marginBottom: 14, background: 'rgba(0,0,0,0.3)', border: '1.5px solid rgba(255,255,255,0.08)', color: 'var(--text)', padding: '14px 16px', borderRadius: 12, width: '100%', fontSize: 14 }} />
+              {csvStatus && (
+                <div className="animate-fade" style={{ background: csvStatus.startsWith('Error') ? 'rgba(227,6,19,0.1)' : csvStatus.startsWith('Success') ? 'rgba(34,197,94,0.1)' : 'rgba(59,130,246,0.08)', border: `1px solid ${csvStatus.startsWith('Error') ? 'rgba(227,6,19,0.3)' : csvStatus.startsWith('Success') ? 'rgba(34,197,94,0.3)' : 'rgba(59,130,246,0.2)'}`, borderRadius: 12, padding: 16, fontSize: 14 }}>
+                  <div style={{ fontWeight: 700, color: csvStatus.startsWith('Error') ? '#ff6b6b' : csvStatus.startsWith('Success') ? '#4ade80' : '#60a5fa', marginBottom: csvCount > 0 ? 6 : 0 }}>{csvStatus}</div>
+                  {csvCount > 0 && <div style={{ color: 'var(--muted)', fontSize: 13 }}>{csvCount} questions imported</div>}
+                </div>
+              )}
             </div>
           )}
 
