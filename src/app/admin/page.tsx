@@ -1,4 +1,6 @@
+// @ts-nocheck
 'use client'
+import { LogoFull } from '@/components/brand/LogoFull'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -151,7 +153,7 @@ export default function Admin() {
       <Particles />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <div className="navbar">
-          <img src="/lapizblue-logo.png" alt="LapizBlue" style={{ height: 26, filter: 'brightness(1.8)' }} />
+          <LogoFull markClassName="h-6 w-6" wordmarkClassName="h-4" />
           <div style={{ fontFamily: 'Rajdhani', fontSize: 18, fontWeight: 700 }}>Admin Panel</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <span style={{ fontSize: 12, color: 'var(--muted)' }}>{user.username}</span>

@@ -5,6 +5,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
+  /* Legacy tokens — used by existing pages (admin, dashboard, quiz, etc.) */
   --red: #E30613;
   --red-dark: #b30000;
   --dark: #0e1a2b;
@@ -24,16 +25,43 @@
   --shadow-hover: 0 12px 40px rgba(0,0,0,0.4);
   --glass: rgba(255,255,255,0.06);
   --glass-border: rgba(255,255,255,0.1);
+
+  /* shadcn theme tokens — midnight blue palette (HSL triplets, no hsl() wrapper) */
+  --background: 222 60% 6%;
+  --foreground: 0 0% 100%;
+  --card-bg: 222 50% 9%;
+  --card-foreground: 0 0% 98%;
+  --popover: 222 50% 9%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 0 0% 100%;
+  --primary-foreground: 222 60% 8%;
+  --secondary: 222 30% 16%;
+  --secondary-foreground: 0 0% 100%;
+  --muted-bg: 222 25% 14%;
+  --muted-foreground: 215 20% 70%;
+  --accent: 222 30% 18%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 70% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --border-token: 222 30% 18%;
+  --input: 222 30% 18%;
+  --ring: 220 80% 70%;
+  --radius: 0.75rem;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 16px; }
 
+/* Smooth, GPU-promoted logo spin — paired with will-change:transform on the SVG */
+@keyframes lpzMarkSpin { to { transform: translateZ(0) rotate(360deg); } }
+.lpz-mark-spin { animation: lpzMarkSpin 1.4s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .lpz-mark-spin { animation: none; } }
+
 body {
   background: linear-gradient(160deg, #0a1628, #1a2f4e, #0f1f38);
   background-attachment: fixed;
   color: var(--text);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-manrope), 'Manrope', 'Inter', sans-serif;
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
