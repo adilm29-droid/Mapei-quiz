@@ -114,10 +114,6 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
-      <style jsx>{`
-        @keyframes skeletonShimmer { 0% { opacity: 0.4; } 50% { opacity: 0.8; } 100% { opacity: 0.4; } }
-        .skeleton-pulse { animation: skeletonShimmer 1.5s ease-in-out infinite; }
-      `}</style>
     </div>
   )
 

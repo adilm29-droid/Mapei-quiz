@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
   /* Legacy tokens — used by existing pages (admin, dashboard, quiz, etc.) */
@@ -56,6 +56,29 @@ html { font-size: 16px; }
 @keyframes lpzMarkSpin { to { transform: translateZ(0) rotate(360deg); } }
 .lpz-mark-spin { animation: lpzMarkSpin 1.4s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .lpz-mark-spin { animation: none; } }
+
+/* Loading screen — dot pulse (migrated from styled-jsx for Turbopack) */
+.loading-dots span {
+  width: 3px;
+  height: 3px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.7);
+  display: inline-block;
+  animation: dotPulse 1.1s ease-in-out infinite;
+}
+.loading-dots span:nth-child(2) { animation-delay: 0.13s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.26s; }
+@keyframes dotPulse {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40%           { opacity: 1;    transform: translateY(-2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-dots span { animation: none; opacity: 0.7; }
+}
+
+/* Dashboard — skeleton shimmer (migrated from styled-jsx for Turbopack) */
+@keyframes skeletonShimmer { 0% { opacity: 0.4; } 50% { opacity: 0.8; } 100% { opacity: 0.4; } }
+.skeleton-pulse { animation: skeletonShimmer 1.5s ease-in-out infinite; }
 
 body {
   background: linear-gradient(160deg, #0a1628, #1a2f4e, #0f1f38);

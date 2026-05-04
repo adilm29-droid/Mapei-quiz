@@ -89,25 +89,6 @@ export function LoadingScreen({ onComplete, duration = 1300 }: LoadingScreenProp
         </motion.div>
       </div>
 
-      <style jsx>{`
-        .loading-dots span {
-          width: 3px;
-          height: 3px;
-          border-radius: 9999px;
-          background: rgba(255, 255, 255, 0.7);
-          display: inline-block;
-          animation: dotPulse 1.1s ease-in-out infinite;
-        }
-        .loading-dots span:nth-child(2) { animation-delay: 0.13s; }
-        .loading-dots span:nth-child(3) { animation-delay: 0.26s; }
-        @keyframes dotPulse {
-          0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
-          40%           { opacity: 1;    transform: translateY(-2px); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .loading-dots span { animation: none; opacity: 0.7; }
-        }
-      `}</style>
     </motion.div>
   )
 }
