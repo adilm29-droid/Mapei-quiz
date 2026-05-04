@@ -63,13 +63,21 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
     }
     setLoginError('')
     setLoading(true)
+    // Sanitize: trim whitespace from both fields, lowercase username for case-insensitive match
+    // (browsers/password managers sometimes auto-capitalize the first letter or paste with stray spaces).
+    const cleanUsername = username.trim().toLowerCase()
+    const cleanPassword = password.trim()
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .eq('username', username)
-      .eq('password', password)
-      .single()
-    if (error || !data) {
+      .ilike('username', cleanUsername)
+      .eq('password', cleanPassword)
+      .maybeSingle()
+    if (error) {
+      console.error('[auth] supabase login error:', error)
+      setLoginError('Sign-in failed. Please try again.')
+      showToast('Sign-in failed. Please try again.')
+    } else if (!data) {
       setLoginError('Invalid username or password')
       showToast('Invalid username or password')
     } else if (data.status === 'pending') {
@@ -108,13 +116,16 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
       return
     }
     setLoading(true)
+    // Normalize inputs so stored data matches what the login lookup will compare against.
+    const cleanUsername = username.trim().toLowerCase()
+    const cleanEmail = email.trim().toLowerCase()
     const { error } = await supabase.from('users').insert([
       {
-        first_name: firstName,
-        last_name: lastName,
-        email,
-        username,
-        password,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        email: cleanEmail,
+        username: cleanUsername,
+        password: password.trim(),
         role: 'user',
         status: 'pending',
       },
