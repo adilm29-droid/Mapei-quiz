@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
 import { ArrowRight, Check } from 'lucide-react'
 
-import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -63,37 +62,31 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
     }
     setLoginError('')
     setLoading(true)
-    // Sanitize: trim whitespace from both fields, lowercase username for case-insensitive match
-    // (browsers/password managers sometimes auto-capitalize the first letter or paste with stray spaces).
-    const cleanUsername = username.trim().toLowerCase()
-    const cleanPassword = password.trim()
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .ilike('username', cleanUsername)
-      .eq('password', cleanPassword)
-      .maybeSingle()
-    if (error) {
-      console.error('[auth] supabase login error:', error)
-      setLoginError('Sign-in failed. Please try again.')
-      showToast('Sign-in failed. Please try again.')
-    } else if (!data) {
-      setLoginError('Invalid username or password')
-      showToast('Invalid username or password')
-    } else if (data.status === 'pending') {
-      setLoginError('Your account is pending admin approval.')
-      showToast('Your account is pending admin approval. Check your email for updates.')
-    } else if (data.status === 'rejected') {
-      setLoginError('Your account was not approved. Contact tarun@lapizblue.com')
-      showToast('Your account was not approved. Contact tarun@lapizblue.com')
-    } else {
-      localStorage.setItem('user', JSON.stringify(data))
-      const skipDefault = onAuthSuccess?.(data) === false
-      if (!skipDefault) {
-        if (data.role === 'admin') router.push('/admin')
-        else if (!data.avatar || data.avatar === 0) router.push('/avatar')
-        else router.push('/dashboard')
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const message = body?.error || 'Sign-in failed. Please try again.'
+        setLoginError(message)
+        showToast(message)
+      } else {
+        const user = body.user
+        localStorage.setItem('user', JSON.stringify(user))
+        const skipDefault = onAuthSuccess?.(user) === false
+        if (!skipDefault) {
+          if (user.role === 'admin') router.push('/admin')
+          else if (!user.avatar || user.avatar === 0) router.push('/avatar')
+          else router.push('/dashboard')
+        }
       }
+    } catch (e) {
+      console.error('[auth] login network error:', e)
+      setLoginError('Network error. Please try again.')
+      showToast('Network error. Please try again.')
     }
     setLoading(false)
   }
@@ -116,39 +109,22 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
       return
     }
     setLoading(true)
-    // Normalize inputs so stored data matches what the login lookup will compare against.
-    const cleanUsername = username.trim().toLowerCase()
-    const cleanEmail = email.trim().toLowerCase()
-    const { error } = await supabase.from('users').insert([
-      {
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        email: cleanEmail,
-        username: cleanUsername,
-        password: password.trim(),
-        role: 'user',
-        status: 'pending',
-      },
-    ])
-    if (error) {
-      showToast(
-        error.message.includes('duplicate') || error.message.includes('unique')
-          ? 'Username already exists'
-          : 'Registration failed. Try again.',
-      )
-    } else {
-      try {
-        await fetch('/api/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'new_registration',
-            data: { first_name: firstName, last_name: lastName, email, username },
-          }),
-        })
-      } catch {}
-      setRegEmail(email)
-      setRegSuccess(true)
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ firstName, lastName, email, username, password }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        showToast(body?.error || 'Registration failed. Try again.')
+      } else {
+        setRegEmail(body?.email || email.trim().toLowerCase())
+        setRegSuccess(true)
+      }
+    } catch (e) {
+      console.error('[auth] register network error:', e)
+      showToast('Network error. Please try again.')
     }
     setLoading(false)
   }
