@@ -61,8 +61,21 @@ export async function POST(request: Request) {
 
   if (queryError) {
     console.error('[auth/login] supabase error:', queryError)
+    const msg = queryError.message || ''
+    if (/fetch failed|ENOTFOUND|ECONNREFUSED|timeout|network/i.test(msg)) {
+      const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '<missing>'
+      return NextResponse.json(
+        {
+          error:
+            'Cannot reach Supabase. NEXT_PUBLIC_SUPABASE_URL on Vercel is wrong or missing. ' +
+            `Got: "${supaUrl}". It should look like https://<project-ref>.supabase.co. ` +
+            `(detail: ${msg})`,
+        },
+        { status: 502 },
+      )
+    }
     return NextResponse.json(
-      { error: `Database error: ${queryError.message}` },
+      { error: `Database error: ${msg}` },
       { status: 500 },
     )
   }
