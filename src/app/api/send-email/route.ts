@@ -1,5 +1,6 @@
 // @ts-nocheck
 import nodemailer from 'nodemailer'
+import { buildDecisionUrl } from '@/lib/decision-token'
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.zoho.com',
@@ -43,6 +44,29 @@ export async function POST(request) {
     if (type === 'new_registration') {
       to = process.env.ZOHO_EMAIL
       subject = `New Registration Request: ${data.first_name} ${data.last_name}`
+
+      // Build one-click approve/deny URLs (HMAC-signed, only work for this exact user + action)
+      let buttonsHtml = ''
+      if (data.user_id && data.origin) {
+        const approveUrl = buildDecisionUrl(data.origin, data.user_id, 'approve')
+        const rejectUrl = buildDecisionUrl(data.origin, data.user_id, 'reject')
+        buttonsHtml = `
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px">
+            <tr>
+              <td align="center" style="padding:0 6px 0 0">
+                <a href="${approveUrl}" style="display:block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 8px;border-radius:10px;letter-spacing:0.5px">✓ APPROVE</a>
+              </td>
+              <td align="center" style="padding:0 0 0 6px">
+                <a href="${rejectUrl}" style="display:block;background:#dc2626;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 8px;border-radius:10px;letter-spacing:0.5px">✕ DENY</a>
+              </td>
+            </tr>
+          </table>
+          <p style="color:#9ca3af;font-size:11px;text-align:center;margin:0 0 16px">One click — no login required. They will get a welcome email automatically if approved.</p>
+        `
+      } else {
+        buttonsHtml = `<p style="color:#6b7280;font-size:13px;margin:0 0 16px">Log in to the admin panel to approve or reject this request.</p>`
+      }
+
       html = wrap('New Registration Request', `
         <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 16px">A new user has requested access to the training platform:</p>
         <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:10px;padding:4px 0;margin-bottom:20px">
@@ -50,7 +74,7 @@ export async function POST(request) {
           <tr><td style="padding:10px 16px;color:#6b7280;font-size:13px;border-bottom:1px solid #e5e7eb">Email</td><td style="padding:10px 16px;font-weight:600;color:#111827;font-size:14px;border-bottom:1px solid #e5e7eb">${data.email}</td></tr>
           <tr><td style="padding:10px 16px;color:#6b7280;font-size:13px">Username</td><td style="padding:10px 16px;font-weight:600;color:#111827;font-size:14px">${data.username}</td></tr>
         </table>
-        <p style="color:#6b7280;font-size:13px;margin:0">Log in to the admin panel to approve or reject this request.</p>
+        ${buttonsHtml}
       `)
     } else if (type === 'approved') {
       to = data.email

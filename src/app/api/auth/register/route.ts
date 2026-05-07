@@ -58,19 +58,25 @@ export async function POST(request: Request) {
   }
 
   let insertError: any = null
+  let insertedUserId: string | null = null
   try {
-    const result = await supabase.from('users').insert([
-      {
-        first_name: firstName,
-        last_name: lastName,
-        email,
-        username,
-        password,
-        role: 'user',
-        status: 'pending',
-      },
-    ])
+    const result = await supabase
+      .from('users')
+      .insert([
+        {
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          username,
+          password,
+          role: 'user',
+          status: 'pending',
+        },
+      ])
+      .select('id')
+      .maybeSingle()
     insertError = result.error
+    insertedUserId = result.data?.id ?? null
   } catch (thrown: any) {
     const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '<missing>'
     console.error('[auth/register] network/throw:', thrown?.message, 'url=', supaUrl)
@@ -103,7 +109,14 @@ export async function POST(request: Request) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         type: 'new_registration',
-        data: { first_name: firstName, last_name: lastName, email, username },
+        data: {
+          user_id: insertedUserId,
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          username,
+          origin,
+        },
       }),
     }).catch(() => {})
   } catch {
