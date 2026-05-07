@@ -111,6 +111,22 @@ export async function POST(request) {
         </div>
         <p style="color:#6b7280;font-size:13px;margin:0">Log in to the platform to complete your assignment.</p>
       `)
+    } else if (type === 'password_reset_request') {
+      to = ADMIN_EMAIL
+      subject = `Password Reset Request: ${data.identifier}`
+      html = wrap('Password Reset Request', `
+        <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 16px">A user has requested a password reset and is waiting for you to issue new credentials.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:10px;padding:4px 0;margin-bottom:20px">
+          <tr><td style="padding:10px 16px;color:#6b7280;font-size:13px;border-bottom:1px solid #e5e7eb">Username / Email</td><td style="padding:10px 16px;font-weight:600;color:#111827;font-size:14px;border-bottom:1px solid #e5e7eb">${data.identifier}</td></tr>
+          <tr><td style="padding:10px 16px;color:#6b7280;font-size:13px">Requested at</td><td style="padding:10px 16px;font-weight:600;color:#111827;font-size:14px">${new Date().toUTCString()}</td></tr>
+        </table>
+        <p style="color:#6b7280;font-size:13px;margin:0 0 8px"><strong>How to reset:</strong></p>
+        <ol style="color:#6b7280;font-size:13px;line-height:1.7;margin:0 0 16px;padding-left:20px">
+          <li>Open Supabase SQL editor</li>
+          <li>Run: <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px">UPDATE users SET password = 'NEW_PASSWORD' WHERE username = '${data.identifier}' OR email = '${data.identifier}';</code></li>
+          <li>Reply to the user with the new password</li>
+        </ol>
+      `)
     } else if (type === 'certificate_earned') {
       to = data.email
       subject = `Congratulations! Certificate Earned: ${data.level}`

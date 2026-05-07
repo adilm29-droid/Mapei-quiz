@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'motion/react'
-import { ArrowRight, Check } from 'lucide-react'
+import { ArrowRight, Check, Eye, EyeOff } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -22,6 +22,40 @@ const inputClass = cn(
   'backdrop-blur-md outline-none transition-all',
   'focus:border-white/40 focus:bg-white/10 focus:ring-2 focus:ring-white/15',
 )
+
+const pwdInputClass = cn(inputClass, 'pr-12')
+
+interface PasswordFieldProps {
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+  onEnter?: () => void
+}
+
+function PasswordField({ value, onChange, placeholder, onEnter }: PasswordFieldProps) {
+  const [shown, setShown] = useState(false)
+  return (
+    <div className="relative">
+      <input
+        type={shown ? 'text' : 'password'}
+        placeholder={placeholder}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onKeyDown={e => onEnter && e.key === 'Enter' && onEnter()}
+        className={pwdInputClass}
+        autoComplete="current-password"
+      />
+      <button
+        type="button"
+        onClick={() => setShown(s => !s)}
+        aria-label={shown ? 'Hide password' : 'Show password'}
+        className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-white/35 transition-colors hover:bg-white/5 hover:text-white/85"
+      >
+        {shown ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  )
+}
 
 interface AuthFormProps {
   className?: string
@@ -43,6 +77,9 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
   const [regSuccess, setRegSuccess] = useState(false)
   const [regEmail, setRegEmail] = useState('')
   const [toast, setToast] = useState<ToastMsg | null>(null)
+  const [forgotMode, setForgotMode] = useState(false)
+  const [forgotIdent, setForgotIdent] = useState('')
+  const [forgotSent, setForgotSent] = useState(false)
 
   useEffect(() => {
     if (!toast) return
@@ -140,10 +177,121 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
     setConfirmPassword('')
   }
 
+  async function handleForgotSubmit() {
+    const ident = forgotIdent.trim()
+    if (!ident) {
+      showToast('Please enter your username or email')
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'password_reset_request',
+          data: { identifier: ident },
+        }),
+      })
+      if (res.ok) {
+        setForgotSent(true)
+      } else {
+        const body = await res.json().catch(() => ({}))
+        showToast(body?.error || 'Could not send reset request. Try again.')
+      }
+    } catch {
+      showToast('Network error. Please try again.')
+    }
+    setLoading(false)
+  }
+
+  function exitForgot() {
+    setForgotMode(false)
+    setForgotIdent('')
+    setForgotSent(false)
+  }
+
   return (
     <div className={cn('relative w-full max-w-md', className)}>
       <AnimatePresence mode="wait">
-        {regSuccess ? (
+        {forgotMode ? (
+          <motion.div
+            key="forgot"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ duration: 0.3 }}
+            className="rounded-3xl border border-white/10 bg-white/[0.04] p-8 backdrop-blur-2xl sm:p-10"
+          >
+            {forgotSent ? (
+              <div className="text-center">
+                <div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-full border border-emerald-300/40 bg-emerald-300/10">
+                  <Check className="h-5 w-5 text-emerald-300" />
+                </div>
+                <h2 className="font-sans text-lg font-semibold tracking-wide text-white">
+                  Reset Request Sent
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-white/55">
+                  Tarun has been notified and will reach out to you with a new password.
+                </p>
+                <Button
+                  onClick={exitForgot}
+                  className="mt-7 h-12 w-full rounded-full bg-white text-[#040a1c] hover:bg-white/90"
+                >
+                  Back to Sign In
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="mb-7 text-center">
+                  <h1 className="font-sans text-[26px] font-semibold tracking-tight text-white">
+                    Reset password
+                  </h1>
+                  <p className="mt-2 text-xs uppercase tracking-[0.35em] text-white/40">
+                    Notify the admin
+                  </p>
+                </div>
+                <p className="mb-5 text-[13px] leading-relaxed text-white/55">
+                  Enter your username or email and we will let Tarun know to reset your
+                  password. He will contact you with the new credentials.
+                </p>
+                <input
+                  type="text"
+                  placeholder="Username or email"
+                  value={forgotIdent}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  onChange={e => setForgotIdent(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleForgotSubmit()}
+                  className={inputClass}
+                />
+                <Button
+                  onClick={handleForgotSubmit}
+                  disabled={loading}
+                  className="mt-5 h-12 w-full rounded-full bg-white text-[#040a1c] hover:bg-white/90 disabled:opacity-60"
+                >
+                  {loading ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border border-[#040a1c]/30 border-t-[#040a1c]" />
+                      Sending request
+                    </span>
+                  ) : (
+                    'Send reset request'
+                  )}
+                </Button>
+                <div className="my-6 h-px w-full bg-white/8" />
+                <div className="text-center">
+                  <button
+                    onClick={exitForgot}
+                    className="text-xs font-semibold uppercase tracking-[0.25em] text-white/70 transition-colors hover:text-white"
+                  >
+                    Back to sign in
+                  </button>
+                </div>
+              </>
+            )}
+          </motion.div>
+        ) : regSuccess ? (
           <motion.div
             key="success"
             initial={{ opacity: 0, y: 16 }}
@@ -199,13 +347,11 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
                     onChange={e => setUsername(e.target.value)}
                     className={inputClass}
                   />
-                  <input
-                    type="password"
+                  <PasswordField
                     placeholder="Password"
                     value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                    className={inputClass}
+                    onChange={setPassword}
+                    onEnter={handleLogin}
                   />
                 </div>
 
@@ -234,9 +380,11 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
 
                 <div className="mt-5 text-center">
                   <button
-                    onClick={() =>
-                      showToast('Contact tarun@lapizblue.com to reset your password', 'error')
-                    }
+                    onClick={() => {
+                      setForgotMode(true)
+                      setForgotIdent(username)
+                      setToast(null)
+                    }}
                     className="text-xs font-medium tracking-wide text-white/45 transition-colors hover:text-white/85"
                   >
                     Forgot password?
@@ -292,20 +440,16 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
                     onChange={e => setUsername(e.target.value)}
                     className={inputClass}
                   />
-                  <input
-                    type="password"
+                  <PasswordField
                     placeholder="Password (min 6 chars)"
                     value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    className={inputClass}
+                    onChange={setPassword}
                   />
-                  <input
-                    type="password"
+                  <PasswordField
                     placeholder="Confirm password"
                     value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleRegister()}
-                    className={inputClass}
+                    onChange={setConfirmPassword}
+                    onEnter={handleRegister}
                   />
                 </div>
 
