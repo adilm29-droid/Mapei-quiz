@@ -2,6 +2,10 @@
 import nodemailer from 'nodemailer'
 import { buildDecisionUrl } from '@/lib/decision-token'
 
+// All admin notifications (new registrations, etc.) go here.
+// ZOHO_EMAIL is only used as the SMTP login user, NOT as the destination.
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'tarun.s@lapizblue.com'
+
 const transporter = nodemailer.createTransport({
   host: 'smtp.zoho.com',
   port: 465,
@@ -42,7 +46,7 @@ export async function POST(request) {
     let to, subject, html
 
     if (type === 'new_registration') {
-      to = process.env.ZOHO_EMAIL
+      to = ADMIN_EMAIL
       subject = `New Registration Request: ${data.first_name} ${data.last_name}`
 
       // Build one-click approve/deny URLs (HMAC-signed, only work for this exact user + action)
