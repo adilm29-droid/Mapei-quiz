@@ -33,17 +33,36 @@ export async function POST(request: Request) {
     )
   }
 
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .ilike('username', username)
-    .eq('password', password)
-    .maybeSingle()
-
-  if (error) {
-    console.error('[auth/login] supabase error:', error)
+  let data: any = null
+  let queryError: any = null
+  try {
+    const result = await supabase
+      .from('users')
+      .select('*')
+      .ilike('username', username)
+      .eq('password', password)
+      .maybeSingle()
+    data = result.data
+    queryError = result.error
+  } catch (thrown: any) {
+    // supabase-js throws on network failures (URL unreachable, project paused, DNS, etc.)
+    const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '<missing>'
+    console.error('[auth/login] network/throw:', thrown?.message, 'url=', supaUrl)
     return NextResponse.json(
-      { error: `Database error: ${error.message}` },
+      {
+        error:
+          'Cannot reach database. Check that NEXT_PUBLIC_SUPABASE_URL is set on Vercel ' +
+          'and matches your Supabase project, and that the project is not paused. ' +
+          `(detail: ${thrown?.message || 'unknown'})`,
+      },
+      { status: 502 },
+    )
+  }
+
+  if (queryError) {
+    console.error('[auth/login] supabase error:', queryError)
+    return NextResponse.json(
+      { error: `Database error: ${queryError.message}` },
       { status: 500 },
     )
   }
