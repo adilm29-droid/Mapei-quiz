@@ -80,6 +80,45 @@ html { font-size: 16px; }
 @keyframes skeletonShimmer { 0% { opacity: 0.4; } 50% { opacity: 0.8; } 100% { opacity: 0.4; } }
 .skeleton-pulse { animation: skeletonShimmer 1.5s ease-in-out infinite; }
 
+/* GradientButton — animated border + outer blur halo per DESIGN_SYSTEM §1
+   (adapted from a 21st.dev rainbow-border button to use our Aurora/Sunset/etc.
+   palette; styled-jsx avoided so Turbopack is happy.)
+
+   The button itself is a solid inner panel. ::before paints the moving gradient
+   border. ::after paints the same gradient blurred to make the outer glow halo. */
+.gbtn { position: relative; isolation: isolate; }
+.gbtn::before,
+.gbtn::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: -2px;
+  border-radius: inherit;
+  width: calc(100% + 4px);
+  height: calc(100% + 4px);
+  z-index: -1;
+  background-size: 300% 300%;
+  animation: gbtnMove 8s linear infinite;
+}
+.gbtn::after { filter: blur(28px); opacity: 0.7; }
+.gbtn:hover::after { opacity: 1; }
+@keyframes gbtnMove {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gbtn::before, .gbtn::after { animation: none; }
+}
+
+/* Per-variant gradients applied as data-attribute selectors */
+.gbtn[data-grad="aurora"]::before,   .gbtn[data-grad="aurora"]::after   { background-image: linear-gradient(135deg, #06B6D4, #8B5CF6, #06B6D4); }
+.gbtn[data-grad="sunset"]::before,   .gbtn[data-grad="sunset"]::after   { background-image: linear-gradient(135deg, #EC4899, #F97316, #EC4899); }
+.gbtn[data-grad="champion"]::before, .gbtn[data-grad="champion"]::after { background-image: linear-gradient(135deg, #FCD34D, #F59E0B, #FCD34D); }
+.gbtn[data-grad="spring"]::before,   .gbtn[data-grad="spring"]::after   { background-image: linear-gradient(135deg, #34D399, #06B6D4, #34D399); }
+.gbtn[data-grad="ember"]::before,    .gbtn[data-grad="ember"]::after    { background-image: linear-gradient(135deg, #EF4444, #EC4899, #EF4444); }
+.gbtn[data-grad="plasma"]::before,   .gbtn[data-grad="plasma"]::after   { background-image: linear-gradient(135deg, #A855F7, #EC4899, #F97316, #A855F7); }
+
 /* Body — midnight base + the radial backdrop layers per DESIGN_SYSTEM §3.
    Two gradients composited on top of the midnight-base to give the app a quiet
    sense of life. Subtle by design — never compete with foreground content. */
