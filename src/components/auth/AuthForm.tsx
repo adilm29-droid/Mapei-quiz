@@ -116,8 +116,7 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
         const skipDefault = onAuthSuccess?.(user) === false
         if (!skipDefault) {
           if (user.role === 'admin') router.push('/admin')
-          else if (!user.avatar || user.avatar === 0) router.push('/avatar')
-          else router.push('/dashboard')
+          else router.push('/home')
         }
       }
     } catch (e) {
