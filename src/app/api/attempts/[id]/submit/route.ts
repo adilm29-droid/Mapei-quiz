@@ -242,7 +242,195 @@ export async function POST(
     })),
   }
 
+  // 13. Fire engagement emails (fire-and-forget — don't block the response)
+  await fireEngagementEmails({
+    supabase,
+    request: _request,
+    userId: session.userId,
+    user,
+    attempt,
+    finalScore: breakdown.finalScore,
+    maxScore: breakdown.maxScore,
+    percent: breakdown.percent,
+    xpDelta: xp.delta,
+    streakCurrent: streakOutcome.current_streak,
+    newBadgesCount: newBadges.length,
+    questionsTitleQuizId: attempt.quiz_id,
+  }).catch(e => console.error('[attempts/submit] engagement emails:', e))
+
   return NextResponse.json(payload)
+}
+
+/**
+ * Fires "quiz_completed" to the user themselves and "score_beaten" to anyone
+ * whose previous best on this quiz was just surpassed by this attempt.
+ * Both are throttled / scoped via email_log so re-submits don't double-send.
+ */
+async function fireEngagementEmails(args: {
+  supabase: any
+  request: Request
+  userId: string
+  user: any
+  attempt: any
+  finalScore: number
+  maxScore: number
+  percent: number
+  xpDelta: number
+  streakCurrent: number
+  newBadgesCount: number
+  questionsTitleQuizId: string
+}) {
+  const { supabase, request, userId, user, attempt, finalScore, maxScore, percent, xpDelta, streakCurrent, newBadgesCount } = args
+  const origin = new URL(request.url).origin
+
+  // Quiz row for the title in the emails
+  const { data: quiz } = await supabase
+    .from('quizzes')
+    .select('id, title')
+    .eq('id', attempt.quiz_id)
+    .maybeSingle()
+  if (!quiz) return
+
+  // Idempotency check — if we already sent quiz_completed for this attempt, skip
+  const { count: alreadySent } = await supabase
+    .from('email_log')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('type', 'quiz_completed')
+    .filter('payload->>attempt_id', 'eq', attempt.id)
+  if ((alreadySent ?? 0) > 0) return
+
+  // Compute the user's current rank on this quiz (best-score-so-far)
+  // — the leaderboard might not be visible yet, but we can show "rank so far"
+  const { data: bestScores } = await supabase
+    .from('attempts')
+    .select('user_id, final_score, submitted_at')
+    .eq('quiz_id', attempt.quiz_id)
+    .eq('is_complete', true)
+    .order('final_score', { ascending: false })
+    .order('submitted_at', { ascending: true })
+
+  // Group: best score per user
+  const bestByUser = new Map<string, { score: number; submitted_at: string }>()
+  for (const a of bestScores ?? []) {
+    const prev = bestByUser.get(a.user_id)
+    if (!prev || a.final_score > prev.score) {
+      bestByUser.set(a.user_id, { score: a.final_score ?? 0, submitted_at: a.submitted_at })
+    }
+  }
+  const ranking = Array.from(bestByUser.entries())
+    .map(([uid, v]) => ({ uid, ...v }))
+    .sort((a, b) => b.score - a.score || (a.submitted_at < b.submitted_at ? -1 : 1))
+  const rankSoFar = ranking.findIndex(r => r.uid === userId) + 1
+  const totalSoFar = ranking.length
+
+  // ── Email 1: Quiz Completed → user themselves ──────────────────────
+  try {
+    await fetch(`${origin}/api/send-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'quiz_completed',
+        data: {
+          email: user.email ?? null,
+          first_name: user.first_name || user.username || '',
+          quiz_title: quiz.title,
+          final_score: finalScore,
+          max_score: maxScore,
+          percent,
+          rank_so_far: rankSoFar > 0 ? rankSoFar : null,
+          total_attempts_so_far: totalSoFar,
+          xp_earned: xpDelta,
+          new_badges_count: newBadgesCount,
+          current_streak: streakCurrent,
+          review_url: `${origin}/quiz/${attempt.quiz_id}/review?attempt=${attempt.id}`,
+        },
+      }),
+    }).catch(() => {})
+    await supabase.from('email_log').insert({
+      user_id: userId,
+      type: 'quiz_completed',
+      payload: { attempt_id: attempt.id, quiz_id: attempt.quiz_id },
+    })
+  } catch (e) {
+    console.error('[engagement] quiz_completed email error:', e)
+  }
+
+  // ── Email 2: Score Beaten → anyone we just leapfrogged ─────────────
+  // Find users whose previous best (excluding this attempt) was strictly less
+  // than the current user's new score, AND whose previous best was strictly
+  // greater than the current user's previous best on this quiz.
+  // (i.e. users who had been ahead of the current user.)
+  const { data: priorOfThisUser } = await supabase
+    .from('attempts')
+    .select('final_score')
+    .eq('user_id', userId)
+    .eq('quiz_id', attempt.quiz_id)
+    .eq('is_complete', true)
+    .neq('id', attempt.id)
+  const priorBestOfMine = (priorOfThisUser ?? []).reduce(
+    (m: number, a: any) => Math.max(m, a.final_score ?? 0),
+    0,
+  )
+
+  // Find rivals whose best > priorBestOfMine AND best < finalScore
+  const beatenUserIds: string[] = []
+  for (const [uid, v] of bestByUser.entries()) {
+    if (uid === userId) continue
+    if (v.score > priorBestOfMine && v.score < finalScore) {
+      beatenUserIds.push(uid)
+    }
+  }
+  if (beatenUserIds.length === 0) return
+
+  const { data: rivals } = await supabase
+    .from('users')
+    .select('id, email, first_name, username')
+    .in('id', beatenUserIds)
+
+  const myDisplayName =
+    [user.first_name, user.last_name].filter(Boolean).join(' ') || `@${user.username}`
+
+  for (const rival of rivals ?? []) {
+    // Throttle — don't double-send within 12h for the same quiz to the same user
+    const cutoff = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
+    const { count: recent } = await supabase
+      .from('email_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', rival.id)
+      .eq('type', 'score_beaten')
+      .filter('payload->>quiz_id', 'eq', attempt.quiz_id)
+      .gt('sent_at', cutoff)
+    if ((recent ?? 0) > 0) continue
+
+    const rivalScore = bestByUser.get(rival.id)?.score ?? 0
+    try {
+      await fetch(`${origin}/api/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'score_beaten',
+          data: {
+            email: rival.email,
+            first_name: rival.first_name || rival.username || '',
+            rival_name: myDisplayName,
+            quiz_title: quiz.title,
+            your_score: rivalScore,
+            rival_score: finalScore,
+            max_score: maxScore,
+            quiz_url: `${origin}/quiz/${attempt.quiz_id}`,
+          },
+        }),
+      }).catch(() => {})
+      await supabase.from('email_log').insert({
+        user_id: rival.id,
+        type: 'score_beaten',
+        payload: { quiz_id: attempt.quiz_id, beaten_by: userId },
+      })
+    } catch (e) {
+      console.error('[engagement] score_beaten email error:', e)
+    }
+  }
 }
 
 /** Recompute the result payload for an already-submitted attempt (idempotent fetch). */

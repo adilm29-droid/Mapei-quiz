@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation'
 import { Toaster } from 'sonner'
 import { getSession } from '@/lib/session'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { LogoFull } from '@/components/brand/LogoFull'
+import { Avatar } from '@/components/avatar/avatar'
 import { AdminTabsNav } from './_components/admin-tabs-nav'
 import { SignOutButton } from './_components/sign-out-button'
 
@@ -17,6 +19,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!session) redirect('/signin')
   if (session.role !== 'admin') redirect('/')
 
+  const supabase = getSupabaseAdmin()
+  const { data: me } = await supabase
+    .from('users')
+    .select('username, first_name, last_name, avatar_url')
+    .eq('id', session.userId)
+    .maybeSingle()
+
   return (
     <div className="min-h-screen text-whitex-soft">
       <header className="border-b border-midnight-line/60 backdrop-blur-md">
@@ -27,7 +36,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               Admin
             </span>
           </div>
-          <SignOutButton />
+          <div className="flex items-center gap-3">
+            {me && (
+              <Avatar
+                size="sm"
+                username={me.username}
+                first_name={me.first_name}
+                last_name={me.last_name}
+                src={me.avatar_url}
+              />
+            )}
+            <SignOutButton />
+          </div>
         </div>
         <div className="mx-auto max-w-6xl px-6 pb-3">
           <AdminTabsNav />

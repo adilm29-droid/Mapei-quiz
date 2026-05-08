@@ -97,29 +97,63 @@ export async function GET(request: Request) {
     const origin = new URL(request.url).origin
     const leaderboard_url = `${origin}/leaderboard?scope=quiz`
 
+    // Map user_id → top-3 rank (1/2/3) for the special top3_finisher email
+    const top3Lookup = new Map<string, 1 | 2 | 3>()
+    ;(top3 ?? []).forEach((row: any, i: number) => {
+      if (i < 3) top3Lookup.set(row.user_id, (i + 1) as 1 | 2 | 3)
+    })
+
     for (const u of users ?? []) {
+      const rank = top3Lookup.get(u.id)
       try {
-        await fetch(`${origin}/api/send-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        if (rank) {
+          // Top-3 finishers get the special celebratory email
+          const myScore = (top3 ?? []).find((r: any) => r.user_id === u.id)?.final_score ?? 0
+          await fetch(`${origin}/api/send-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'top3_finisher',
+              data: {
+                email: u.email,
+                first_name: u.first_name || u.username,
+                quiz_title: q.title,
+                rank,
+                final_score: myScore,
+                max_score: q.max_score ?? 0,
+                leaderboard_url,
+              },
+            }),
+          })
+          await supabase.from('email_log').insert({
+            user_id: u.id,
+            type: 'top3_finisher',
+            payload: { quiz_id: q.id, rank },
+          })
+        } else {
+          // Everyone else gets the standard leaderboard-live recap
+          await fetch(`${origin}/api/send-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'leaderboard_live',
+              data: {
+                email: u.email,
+                first_name: u.first_name || u.username,
+                quiz_title: q.title,
+                week_number: q.week_number,
+                podium,
+                user_rank: rankByUser[u.id] ?? null,
+                leaderboard_url,
+              },
+            }),
+          })
+          await supabase.from('email_log').insert({
+            user_id: u.id,
             type: 'leaderboard_live',
-            data: {
-              email: u.email,
-              first_name: u.first_name || u.username,
-              quiz_title: q.title,
-              week_number: q.week_number,
-              podium,
-              user_rank: rankByUser[u.id] ?? null,
-              leaderboard_url,
-            },
-          }),
-        })
-        await supabase.from('email_log').insert({
-          user_id: u.id,
-          type: 'leaderboard_live',
-          payload: { quiz_id: q.id },
-        })
+            payload: { quiz_id: q.id },
+          })
+        }
         emailedTotal += 1
       } catch (e) {
         console.error('[cron/reveal-leaderboards] email error:', e)

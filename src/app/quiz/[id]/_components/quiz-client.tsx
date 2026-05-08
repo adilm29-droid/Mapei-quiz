@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 import { GradientButton } from '@/components/ui/gradient-button'
 import { Button } from '@/components/ui/button'
+import { Avatar } from '@/components/avatar/avatar'
 import { cn } from '@/lib/utils'
 import { Timer } from './timer'
 import { TopBar } from './top-bar'
@@ -14,6 +15,13 @@ import { TimeUpModal } from './time-up-modal'
 import type { AttemptStateForClient } from '@/lib/types'
 
 type Slot = 'A' | 'B' | 'C' | 'D'
+
+interface MeSummary {
+  username: string
+  first_name: string | null
+  last_name: string | null
+  avatar_url: string | null
+}
 
 export function QuizClient({ quizId }: { quizId: string }) {
   const router = useRouter()
@@ -25,6 +33,27 @@ export function QuizClient({ quizId }: { quizId: string }) {
   const [timeUp, setTimeUp] = useState(false)
   const [perQuestionElapsed, setPerQuestionElapsed] = useState(0)
   const startedQRef = useRef<string | null>(null)
+  const [me, setMe] = useState<MeSummary | null>(null)
+
+  // Fetch current user (for the corner avatar — visible during the quiz)
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/me')
+      .then(r => (r.ok ? r.json() : null))
+      .then(body => {
+        if (cancelled || !body?.user) return
+        setMe({
+          username: body.user.username,
+          first_name: body.user.first_name,
+          last_name: body.user.last_name,
+          avatar_url: body.user.avatar_url,
+        })
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Start (or resume) the attempt
   useEffect(() => {
@@ -157,10 +186,21 @@ export function QuizClient({ quizId }: { quizId: string }) {
     <div className="relative min-h-screen pb-32">
       <TopBar elapsedSec={perQuestionElapsed} />
 
-      <div className="mx-auto flex max-w-3xl items-center justify-between px-5 pb-4 pt-7">
-        <p className="font-mono text-caption tabular text-whitex-muted">
-          Q {state.currentQuestionIndex + 1} of {state.totalQuestions}
-        </p>
+      <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-5 pb-4 pt-7">
+        <div className="flex items-center gap-3">
+          {me && (
+            <Avatar
+              size="sm"
+              username={me.username}
+              first_name={me.first_name}
+              last_name={me.last_name}
+              src={me.avatar_url}
+            />
+          )}
+          <p className="font-mono text-caption tabular text-whitex-muted">
+            Q {state.currentQuestionIndex + 1} of {state.totalQuestions}
+          </p>
+        </div>
         <Timer expiresAt={state.expiresAt} onExpired={onTimeExpired} />
       </div>
 

@@ -25,6 +25,9 @@ import StreakAtRisk from '@/emails/StreakAtRisk'
 import WeeklyRecap from '@/emails/WeeklyRecap'
 import AccessRequestReceived from '@/emails/AccessRequestReceived'
 import AccessRequestResolved from '@/emails/AccessRequestResolved'
+import QuizCompleted from '@/emails/QuizCompleted'
+import Top3Finisher from '@/emails/Top3Finisher'
+import ScoreBeaten from '@/emails/ScoreBeaten'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -226,6 +229,60 @@ export async function POST(request) {
             first_name: data.first_name,
             quiz_title: data.quiz_title,
             granted: !!data.granted,
+            quiz_url: data.quiz_url,
+          }),
+        )
+        break
+      }
+
+      case 'quiz_completed': {
+        to = data.email
+        subject = `${data.percent}% on ${data.quiz_title}`
+        html = await render(
+          QuizCompleted({
+            first_name: data.first_name,
+            quiz_title: data.quiz_title,
+            final_score: data.final_score,
+            max_score: data.max_score,
+            percent: data.percent,
+            rank_so_far: data.rank_so_far,
+            total_attempts_so_far: data.total_attempts_so_far,
+            xp_earned: data.xp_earned,
+            new_badges_count: data.new_badges_count,
+            current_streak: data.current_streak,
+            review_url: data.review_url,
+          }),
+        )
+        break
+      }
+
+      case 'top3_finisher': {
+        to = data.email
+        subject = `🏆 You placed #${data.rank} on ${data.quiz_title}`
+        html = await render(
+          Top3Finisher({
+            first_name: data.first_name,
+            quiz_title: data.quiz_title,
+            rank: data.rank,
+            final_score: data.final_score,
+            max_score: data.max_score,
+            leaderboard_url: data.leaderboard_url,
+          }),
+        )
+        break
+      }
+
+      case 'score_beaten': {
+        to = data.email
+        subject = `⚡ ${data.rival_name} just beat your score`
+        html = await render(
+          ScoreBeaten({
+            first_name: data.first_name,
+            rival_name: data.rival_name,
+            quiz_title: data.quiz_title,
+            your_score: data.your_score,
+            rival_score: data.rival_score,
+            max_score: data.max_score,
             quiz_url: data.quiz_url,
           }),
         )
