@@ -1,0 +1,324 @@
+{
+  "quiz_title": "Mapei Ceramic Line — Product Knowledge Quiz",
+  "audience": "Sales / showroom staff (customer-facing)",
+  "source": "MAPEI_PRODUCT_KNOWLEDGE.xlsx — built from official Mapei TDSs",
+  "total_questions": 30,
+  "split": {
+    "very_easy": 10,
+    "easy": 11,
+    "practical": 5,
+    "medium": 4
+  },
+  "scoring": {
+    "very_easy": 1,
+    "easy": 2,
+    "practical": 3,
+    "medium": 4,
+    "max_score": 57
+  },
+  "design_notes": "All distractors are real values pulled from other Mapei products in the same data column, so wrong answers are plausible — not obvious.",
+
+  "questions": [
+
+    {
+      "id": 1,
+      "difficulty": "very_easy",
+      "question": "Which Mapei product is a two-component adhesive that uses a latex liquid instead of water?",
+      "options": ["Keraflex", "Granirapid", "Adesilex P9", "Kerabond Plus"],
+      "correct_answer": "Granirapid",
+      "explanation": "Granirapid is a two-component system — Part A powder is mixed directly into Part B latex; no water is added.",
+      "source_sheet": "Master / Mix Prep"
+    },
+
+    {
+      "id": 2,
+      "difficulty": "very_easy",
+      "question": "What colour options does Adesilex P7 come in?",
+      "options": ["White only", "Grey only", "White or Grey", "16 colours"],
+      "correct_answer": "Grey only",
+      "explanation": "Adesilex P7 is the only standard cementitious adhesive in the Mapei ceramic line offered in grey only — no white version.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 3,
+      "difficulty": "very_easy",
+      "question": "What is the bag size of the Ultralite S2 adhesive?",
+      "options": ["15 kg", "20 kg", "25 kg", "30.5 kg"],
+      "correct_answer": "15 kg",
+      "explanation": "All three Ultralite products (S1, S2, S2 Quick) come in 15 kg lightweight bags — same volume as a conventional 25 kg bag.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 4,
+      "difficulty": "very_easy",
+      "question": "Keracolor FF is which type of product?",
+      "options": ["Tile adhesive", "Cementitious grout", "Silicone sealant", "Epoxy adhesive"],
+      "correct_answer": "Cementitious grout",
+      "explanation": "Keracolor FF is a polymer-modified cementitious grout (CG2WA) for joints up to 6 mm — it fills tile joints, it does not bond tiles.",
+      "source_sheet": "Master / Distinctions"
+    },
+
+    {
+      "id": 5,
+      "difficulty": "very_easy",
+      "question": "Mapesil AC is supplied in what packaging?",
+      "options": ["15 kg bag", "25 kg bag", "10 kg kit", "310 ml cartridge"],
+      "correct_answer": "310 ml cartridge",
+      "explanation": "Mapesil AC is a one-component silicone sealant supplied in 310 ml cartridges — applied with a standard caulking gun.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 6,
+      "difficulty": "very_easy",
+      "question": "How many colours is Mapesil AC available in (excluding transparent)?",
+      "options": ["10", "16", "17", "40"],
+      "correct_answer": "40",
+      "explanation": "Mapesil AC is available in 40 colours plus transparent — the largest colour palette in the entire Mapei ceramic line.",
+      "source_sheet": "Master / Distinctions"
+    },
+
+    {
+      "id": 7,
+      "difficulty": "very_easy",
+      "question": "Keralastic and Keralastic T are what kind of adhesive?",
+      "options": ["Cementitious", "Two-component polyurethane", "Acrylic dispersion", "Epoxy resin"],
+      "correct_answer": "Two-component polyurethane",
+      "explanation": "Both are two-component reaction-resin (R2 / R2T) polyurethane adhesives — no water, no cement, classified per EN 12004 as R2.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 8,
+      "difficulty": "very_easy",
+      "question": "Kerapoxy is a two-component epoxy product. What does it function as?",
+      "options": ["Grout only", "Adhesive only", "Both grout and adhesive", "Sealant"],
+      "correct_answer": "Both grout and adhesive",
+      "explanation": "Kerapoxy is dual-classified — RG (reaction-resin grout per EN 13888) and R2T (reaction-resin adhesive per EN 12004). It can be used as either.",
+      "source_sheet": "Master / Distinctions"
+    },
+
+    {
+      "id": 9,
+      "difficulty": "very_easy",
+      "question": "Mapesil Z Plus is specifically formulated for which application area?",
+      "options": ["Façades", "Pedestrian walkways", "Sanitary fittings (baths, showers, saunas)", "Pool expansion joints"],
+      "correct_answer": "Sanitary fittings (baths, showers, saunas)",
+      "explanation": "Mapesil Z Plus is a mould-resistant acetic silicone designed for bathrooms, showers, saunas, kitchens — sanitary fittings. Not for pool expansion joints (use Mapesil AC for those).",
+      "source_sheet": "Distinctions"
+    },
+
+    {
+      "id": 10,
+      "difficulty": "very_easy",
+      "question": "What does the letter 'F' stand for in a Mapei adhesive classification code (e.g. C2F)?",
+      "options": ["Flexible", "Fast-setting", "Floor-only", "Fibre-reinforced"],
+      "correct_answer": "Fast-setting",
+      "explanation": "F = fast-setting / rapid-hardening per ISO 13007 / EN 12004. Granirapid (C2F S1) and Ultralite S2 Quick (C2FE S2) carry the F.",
+      "source_sheet": "Code Decoder"
+    },
+
+    {
+      "id": 11,
+      "difficulty": "easy",
+      "question": "What is the pot life of Granirapid once mixed?",
+      "options": ["20 minutes", "45 minutes", "2 hours", "more than 8 hours"],
+      "correct_answer": "45 minutes",
+      "explanation": "Granirapid is fast-setting — pot life 45 min. The other options are real pot lives of other Mapei products (Mapesil skin time, Keracolor FF, standard C2 adhesives).",
+      "source_sheet": "Timing"
+    },
+
+    {
+      "id": 12,
+      "difficulty": "easy",
+      "question": "What does the 'S2' classification mean in C2E S2?",
+      "options": ["Slip-resistant level 2", "Highly deformable (≥ 5 mm)", "Two-component", "Sanded grout"],
+      "correct_answer": "Highly deformable (≥ 5 mm)",
+      "explanation": "S2 = highly deformable per EN 12004 (transversal deformation ≥ 5 mm). S1 = deformable (≥ 2.5 mm and < 5 mm). T (not S) means slip-resistant.",
+      "source_sheet": "Code Decoder"
+    },
+
+    {
+      "id": 13,
+      "difficulty": "easy",
+      "question": "How long after installation can a swimming pool tiled with Granirapid be filled with water?",
+      "options": ["24 hours", "3 days", "7 days", "21 days"],
+      "correct_answer": "3 days",
+      "explanation": "Granirapid is fast-setting — pools fillable after 3 days. Most standard cementitious adhesives need 21 days; Kerapoxy needs 10; Keracolor FF as grout needs 7.",
+      "source_sheet": "Timing"
+    },
+
+    {
+      "id": 14,
+      "difficulty": "easy",
+      "question": "What is the open time of Adesilex P7?",
+      "options": ["10 minutes", "20 minutes", "30 minutes", "60 minutes"],
+      "correct_answer": "20 minutes",
+      "explanation": "Adesilex P7 has NO 'E' in its code (just C2T) — open time only 20 min. The 'E' adhesives (Keraflex, Kerabond Plus, etc.) have >30 min.",
+      "source_sheet": "Timing / Distinctions"
+    },
+
+    {
+      "id": 15,
+      "difficulty": "easy",
+      "question": "Mapesil LM is a NEUTRAL silicone. What does that primarily mean for the user?",
+      "options": ["It cures faster than acetic silicones", "It does not release acetic acid, so it's safe on marble and acid-sensitive stone", "It contains no colour pigments", "It can only be used indoors"],
+      "correct_answer": "It does not release acetic acid, so it's safe on marble and acid-sensitive stone",
+      "explanation": "Acetic silicones (AC, Z Plus) release acetic acid during cure, which etches limestone, marble and natural stone. Mapesil LM is neutral-curing and ASTM C1248 non-staining — designed for stone.",
+      "source_sheet": "Distinctions"
+    },
+
+    {
+      "id": 16,
+      "difficulty": "easy",
+      "question": "What is the application temperature range of Granirapid?",
+      "options": ["+5 °C to +35 °C", "+5 °C to +40 °C", "+10 °C to +30 °C", "+12 °C to +30 °C"],
+      "correct_answer": "+5 °C to +40 °C",
+      "explanation": "Granirapid: +5 to +40 °C — standard range for cementitious adhesives. +5 to +35 is Ultralite S2 only. +10 to +30 is Keralastic. +12 to +30 is Kerapoxy (narrowest).",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 17,
+      "difficulty": "easy",
+      "question": "What is the shelf-life (storage) of Keralastic and Kerapoxy?",
+      "options": ["12 months", "18 months", "24 months", "36 months"],
+      "correct_answer": "24 months",
+      "explanation": "Reaction-resin products (Keralastic, Keralastic T, Kerapoxy, Kerapoxy Adhesive) all store 24 months. Cementitious adhesives store 12 months. Mapesil LM and Z Plus store 18 months.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 18,
+      "difficulty": "easy",
+      "question": "What is the 28-day initial adhesion strength of Granirapid (per EN 1348)?",
+      "options": ["1.0 N/mm²", "1.4 N/mm²", "2.0 N/mm²", "2.5 N/mm²"],
+      "correct_answer": "2.5 N/mm²",
+      "explanation": "Granirapid achieves 2.5 N/mm² at 28 days — same as Ultralite S2 and S2 Quick. 1.0 is Mapeset (basic), 1.4 is Adesilex P7 / Kerabond T, 2.0 is Keraflex Maxi S1 Zero / Ultralite S1.",
+      "source_sheet": "Performance"
+    },
+
+    {
+      "id": 19,
+      "difficulty": "easy",
+      "question": "What does the 'W' stand for in Keracolor FF's CG2WA classification?",
+      "options": ["White-pigmented", "Reduced water absorption (water-repellent)", "Wall-only", "Waterproof"],
+      "correct_answer": "Reduced water absorption (water-repellent)",
+      "explanation": "W = grout with reduced water absorption (DropEffect® water-repellent technology). A = high abrasion resistance. CG2 = improved cementitious grout per EN 13888.",
+      "source_sheet": "Code Decoder"
+    },
+
+    {
+      "id": 20,
+      "difficulty": "easy",
+      "question": "What is the maximum joint width Keracolor FF can fill?",
+      "options": ["3 mm", "6 mm", "10 mm", "15 mm"],
+      "correct_answer": "6 mm",
+      "explanation": "Keracolor FF (the 'FF' = Fugolastic Fine / fine joints) is rated for joints up to 6 mm. For wider joints Mapei has other grouts (e.g. Ultracolor Plus).",
+      "source_sheet": "Distinctions"
+    },
+
+    {
+      "id": 21,
+      "difficulty": "easy",
+      "question": "Which Mapei product features 'Low Dust' technology to reduce airborne dust during mixing?",
+      "options": ["Granirapid", "Keraflex Maxi S1 Zero", "Ultralite S1", "Adesilex P9"],
+      "correct_answer": "Ultralite S1",
+      "explanation": "Ultralite S1 has Mapei's Low Dust technology — its main selling point alongside ~60% higher yield vs conventional Mapei cementitious adhesives.",
+      "source_sheet": "Distinctions"
+    },
+
+    {
+      "id": 22,
+      "difficulty": "practical",
+      "question": "A customer is renovating a bathroom and wants to install large 60×120 cm porcelain tiles on a wall over an OLD ceramic tile floor that they don't want to remove. Which adhesive do you recommend?",
+      "options": ["Mapeset (basic, economical)", "Adesilex P7 (slip-resistant, grey)", "Ultralite S2 (lightweight, S2 highly deformable, ideal for thin/large porcelain)", "Kerabond T (basic C1)"],
+      "correct_answer": "Ultralite S2 (lightweight, S2 highly deformable, ideal for thin/large porcelain)",
+      "explanation": "Tile-on-tile + large-format porcelain on a wall = needs (a) tile-on-tile capability, (b) high deformability, (c) slip-resistance for vertical, (d) lightweight for ease. Ultralite S2 ticks all four. Mapeset and Kerabond T cap at 900 cm² for tile-on-tile and aren't deformable enough for large porcelain.",
+      "source_sheet": "Where to Use / Distinctions"
+    },
+
+    {
+      "id": 23,
+      "difficulty": "practical",
+      "question": "A customer says: 'I'm building an outdoor swimming pool and need to fill it as fast as possible after tiling — what adhesive should I use?'",
+      "options": ["Keraflex (21 days before filling)", "Adesilex P9 (21 days before filling)", "Granirapid (3 days before filling)", "Keraflex Maxi S1 Zero (21 days before filling)"],
+      "correct_answer": "Granirapid (3 days before filling)",
+      "explanation": "Granirapid is fast-setting and explicitly rated for pools fillable after 3 days. All standard C2TE adhesives need 21 days. Note: for pools with very sensitive natural stone the answer would change to Keralastic.",
+      "source_sheet": "Timing / Where to Use"
+    },
+
+    {
+      "id": 24,
+      "difficulty": "practical",
+      "question": "A homeowner is sealing the joint between a marble vanity top and the wall. Which sealant should you recommend, and why?",
+      "options": ["Mapesil AC — biggest colour range available", "Mapesil Z Plus — designed for sanitary fittings", "Mapesil LM — neutral cure, won't stain or etch the marble", "Kerapoxy — most chemically resistant"],
+      "correct_answer": "Mapesil LM — neutral cure, won't stain or etch the marble",
+      "explanation": "Acetic silicones (AC, Z Plus) release acetic acid that etches marble and stains acid-sensitive stones. Mapesil LM is neutral-curing and ASTM C1248 non-staining — the only correct choice for marble. Kerapoxy is a grout/adhesive, not a sealant.",
+      "source_sheet": "Distinctions"
+    },
+
+    {
+      "id": 25,
+      "difficulty": "practical",
+      "question": "A restaurant client needs grout for a busy commercial kitchen — they need it acid-resistant, food-industry compliant, and easy to clean. What do you recommend?",
+      "options": ["Keracolor FF (cementitious, water-repellent)", "Kerapoxy (epoxy grout, HACCP compliant)", "Mapesil AC (silicone sealant)", "Adesilex P9 (improved adhesive)"],
+      "correct_answer": "Kerapoxy (epoxy grout, HACCP compliant)",
+      "explanation": "Kerapoxy is HACCP-compliant per EC Reg. 852/2004 — explicitly designed for dairies, abattoirs, breweries, food-industry environments. It's acid-resistant for most acids and easy to clean. Keracolor FF is only acid-resistant if pH > 3 and is not HACCP-rated.",
+      "source_sheet": "Distinctions"
+    },
+
+    {
+      "id": 26,
+      "difficulty": "practical",
+      "question": "A contractor needs to bond ceramic tiles onto a metal substrate — which is the only suitable Mapei product from this set?",
+      "options": ["Granirapid (fast-setting cementitious)", "Keraflex (high-performance C2TE)", "Keralastic / Keralastic T (two-component polyurethane)", "Kerapoxy Adhesive (two-component epoxy)"],
+      "correct_answer": "Keralastic / Keralastic T (two-component polyurethane)",
+      "explanation": "Every cementitious adhesive in this set explicitly forbids metal. Keralastic/Keralastic T are reaction-resin polyurethanes specifically designed to bond to metal, wood, PVC, rubber, asphalt, and fibre-cement. Kerapoxy Adhesive can also bond metal but the rust must first be removed by sand-blasting — Keralastic is the cleaner, primary recommendation.",
+      "source_sheet": "Where NOT to Use / Distinctions"
+    },
+
+    {
+      "id": 27,
+      "difficulty": "medium",
+      "question": "A customer mixes Kerabond T with Isolastic latex INSTEAD of water. What is the resulting classification?",
+      "options": ["Stays C1T", "Becomes C2E", "Becomes C2ES1", "Becomes C2ES2"],
+      "correct_answer": "Becomes C2ES2",
+      "explanation": "This is the classic upgrade trick: Kerabond T (C1T) + Isolastic neat = C2ES2 (highly deformable improved). Kerabond Plus (C2E) gets a different upgrade — 1:1 Isolastic:water → C2ES1; neat Isolastic → C2ES2.",
+      "source_sheet": "Distinctions"
+    },
+
+    {
+      "id": 28,
+      "difficulty": "medium",
+      "question": "Which Mapei product has the LONGEST adjustment time in the entire workbook — useful when installing complex tile patterns that need repositioning?",
+      "options": ["Keralastic / Keralastic T (90 min)", "Kerapoxy Adhesive (130 min)", "Keraflex (~60 min)", "Granirapid (3 hours)"],
+      "correct_answer": "Kerapoxy Adhesive (130 min)",
+      "explanation": "Kerapoxy Adhesive has 130 minutes of adjustment time — longest in the set. Keralastic T comes second at 90 min. Granirapid's '3-4 h' is light foot traffic time, not adjustment time (its adjustment is ~3 h).",
+      "source_sheet": "Timing / Distinctions"
+    },
+
+    {
+      "id": 29,
+      "difficulty": "medium",
+      "question": "For Keraflex (one-component cementitious), how does the water requirement differ between the GREY and WHITE versions per 25 kg bag?",
+      "options": ["Grey and white use the same water amount", "Grey uses MORE water than white", "White uses MORE water than grey (9.0–9.5 L vs 7.5–8.0 L)", "White cannot be mixed with water — only with Isolastic"],
+      "correct_answer": "White uses MORE water than grey (9.0–9.5 L vs 7.5–8.0 L)",
+      "explanation": "Keraflex white needs 9.0–9.5 L of water per 25 kg bag vs 7.5–8.0 L for grey. Adesilex P9 is the same way. This is OPPOSITE to Mapeset and Kerabond T (where white uses less water). Common trick question — most assume grey/white are identical.",
+      "source_sheet": "Mix Prep / Distinctions"
+    },
+
+    {
+      "id": 30,
+      "difficulty": "medium",
+      "question": "Which silicone sealant has the LOWEST movement-capability rating, making it the LEAST flexible of the three?",
+      "options": ["Mapesil AC (±25%)", "Mapesil LM (±25%)", "Mapesil Z Plus (±12.5%)", "All three are rated equally at ±25%"],
+      "correct_answer": "Mapesil Z Plus (±12.5%)",
+      "explanation": "Mapesil Z Plus is rated only ±12.5% movement — half that of AC and LM. This is why Z Plus is restricted to sanitary fittings (low movement) and explicitly NOT recommended for pool expansion joints — use Mapesil AC for high-movement joints.",
+      "source_sheet": "Distinctions"
+    }
+
+  ]
+}

@@ -44,6 +44,8 @@ export interface QuizRow {
   unlocked_at: string | null
   leaderboard_visible: boolean
   leaderboard_revealed_at: string | null
+  /** Cached sum of question.points — what a perfect score equals */
+  max_score: number | null
   deleted_at: string | null
   created_at: string
   updated_at: string
@@ -51,6 +53,17 @@ export interface QuizRow {
 
 // ── questions ─────────────────────────────────────────────────────────
 export type AnswerLetter = 'A' | 'B' | 'C' | 'D'
+
+/** Difficulty tier — drives the points awarded per correct answer. */
+export type Difficulty = 'very_easy' | 'easy' | 'practical' | 'medium'
+
+/** Points per correct answer per difficulty (per the source workbook). */
+export const DIFFICULTY_POINTS: Record<Difficulty, number> = {
+  very_easy: 1,
+  easy:      2,
+  practical: 3,
+  medium:    4,
+}
 
 export interface QuestionRow {
   id: string
@@ -63,11 +76,14 @@ export interface QuestionRow {
   correct_answer: AnswerLetter
   explanation: string | null
   category: string | null
+  difficulty: Difficulty
+  /** Cached from DIFFICULTY_POINTS at insert time. Source of truth for scoring. */
+  points: number
   order_index: number
   created_at: string
 }
 
-// What an admin pastes via CSV (no IDs, no quiz_id, no order_index — server fills)
+// What an admin uploads (no IDs, no quiz_id, no order_index — server fills)
 export interface QuestionInsert {
   question_text: string
   option_a: string
@@ -75,8 +91,26 @@ export interface QuestionInsert {
   option_c: string
   option_d: string
   correct_answer: AnswerLetter
+  difficulty: Difficulty
+  points?: number              // optional — defaults to DIFFICULTY_POINTS[difficulty]
   explanation?: string | null
   category?: string | null
+}
+
+/** Shape of the admin's JSON-paste import (matches mapei_quiz.json). */
+export interface QuizImportPayload {
+  quiz_title: string
+  questions: {
+    id?: number
+    difficulty: Difficulty
+    question: string
+    options: [string, string, string, string]
+    correct_answer: string                  // matches one of `options` exactly
+    explanation?: string | null
+    source_sheet?: string | null
+  }[]
+  scoring?: { max_score?: number }
+  week_number?: number
 }
 
 // ── attempts ──────────────────────────────────────────────────────────
