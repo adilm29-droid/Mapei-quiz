@@ -111,6 +111,27 @@ export async function POST(request) {
         </div>
         <p style="color:#6b7280;font-size:13px;margin:0">Log in to the platform to complete your assignment.</p>
       `)
+    } else if (type === 'account_created') {
+      to = data.email
+      subject = 'Welcome to Lapiz Blue Quiz'
+      html = wrap('Welcome aboard 🎉', `
+        <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 16px">Hi <strong>${data.first_name}</strong>,</p>
+        <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 20px">Your Lapiz Blue Quiz account is ready. Use the credentials below to sign in. We strongly recommend changing your password after first login.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#06B6D4,#8B5CF6);border-radius:14px;padding:1px;margin-bottom:24px">
+          <tr><td style="background:#0B1437;border-radius:13px;padding:24px">
+            <div style="color:rgba(255,255,255,0.55);font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Username</div>
+            <div style="color:#ffffff;font-family:'JetBrains Mono',Menlo,Consolas,monospace;font-size:18px;font-weight:600;margin-bottom:18px">${data.username}</div>
+            <div style="color:rgba(255,255,255,0.55);font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Temporary Password</div>
+            <div style="color:#ffffff;font-family:'JetBrains Mono',Menlo,Consolas,monospace;font-size:18px;font-weight:600">${data.temp_password}</div>
+          </td></tr>
+        </table>
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px">
+          <tr><td align="center">
+            <a href="${data.login_url}" style="display:inline-block;background:linear-gradient(135deg,#06B6D4,#8B5CF6);color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 40px;border-radius:12px;letter-spacing:0.5px">Sign in →</a>
+          </td></tr>
+        </table>
+        <p style="color:#9ca3af;font-size:12px;line-height:1.6;margin:0">If the button doesn't work, paste this link into your browser:<br/><span style="color:#6b7280;word-break:break-all">${data.login_url}</span></p>
+      `)
     } else if (type === 'password_reset_request') {
       to = ADMIN_EMAIL
       subject = `Password Reset Request: ${data.identifier}`

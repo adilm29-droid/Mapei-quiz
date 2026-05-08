@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { hashPassword } from '@/lib/passwords'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -57,6 +58,15 @@ export async function POST(request: Request) {
     )
   }
 
+  // Hash the password BEFORE the insert
+  let password_hash: string
+  try {
+    password_hash = await hashPassword(password)
+  } catch (e: any) {
+    console.error('[auth/register] hash error:', e?.message)
+    return NextResponse.json({ error: 'Could not secure password' }, { status: 500 })
+  }
+
   let insertError: any = null
   let insertedUserId: string | null = null
   try {
@@ -68,8 +78,8 @@ export async function POST(request: Request) {
           last_name: lastName,
           email,
           username,
-          password,
-          role: 'user',
+          password_hash,
+          role: 'staff',
           status: 'pending',
         },
       ])
