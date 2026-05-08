@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getSession } from '@/lib/session'
+import { requireAdmin } from '@/lib/auth-guard'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { hashPassword } from '@/lib/passwords'
 
@@ -9,18 +9,34 @@ export const dynamic = 'force-dynamic'
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /**
+ * GET /api/admin/users — admin-only. Lists every user (no password hash).
+ */
+export async function GET() {
+  const guard = await requireAdmin()
+  if (guard instanceof NextResponse) return guard
+
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('users')
+    .select(
+      'id,username,email,first_name,last_name,role,status,xp,level,title,current_streak,longest_streak,last_quiz_date,created_at,updated_at',
+    )
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('[admin/users][GET]', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  return NextResponse.json({ users: data ?? [] })
+}
+
+/**
  * POST /api/admin/users — admin-only. Creates a user with status='approved'
- * (skipping the self-signup approval gate). Fires the 'account_created' email
- * with the credentials inline so the new user can log in immediately.
+ * and sends the account_created email with the temp password inline.
  */
 export async function POST(request: Request) {
-  const session = await getSession()
-  if (!session) {
-    return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
-  }
-  if (session.role !== 'admin') {
-    return NextResponse.json({ error: 'Admin only' }, { status: 403 })
-  }
+  const guard = await requireAdmin()
+  if (guard instanceof NextResponse) return guard
 
   let body: any
   try {
@@ -54,13 +70,7 @@ export async function POST(request: Request) {
     )
   }
 
-  let supabase
-  try {
-    supabase = getSupabaseAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Server misconfigured' }, { status: 500 })
-  }
-
+  const supabase = getSupabaseAdmin()
   const password_hash = await hashPassword(tempPassword)
 
   const { data: row, error: insertError } = await supabase
@@ -82,14 +92,14 @@ export async function POST(request: Request) {
   if (insertError) {
     const msg = insertError.message || ''
     const isDup = msg.includes('duplicate') || msg.includes('unique')
-    console.error('[admin/users] insert error:', insertError)
+    console.error('[admin/users][POST]', insertError)
     return NextResponse.json(
       { error: isDup ? 'Username or email already exists' : `Could not create user: ${msg}` },
       { status: isDup ? 409 : 500 },
     )
   }
 
-  // Fire welcome email with credentials (fire-and-forget)
+  // Fire-and-forget welcome email with credentials
   try {
     const origin = new URL(request.url).origin
     await fetch(`${origin}/api/send-email`, {
@@ -107,7 +117,7 @@ export async function POST(request: Request) {
       }),
     }).catch(() => {})
   } catch {
-    /* swallow — user is created either way */
+    /* swallow */
   }
 
   return NextResponse.json({ user: row })
