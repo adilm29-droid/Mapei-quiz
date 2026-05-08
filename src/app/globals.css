@@ -80,11 +80,17 @@ html { font-size: 16px; }
 @keyframes skeletonShimmer { 0% { opacity: 0.4; } 50% { opacity: 0.8; } 100% { opacity: 0.4; } }
 .skeleton-pulse { animation: skeletonShimmer 1.5s ease-in-out infinite; }
 
+/* Body — midnight base + the radial backdrop layers per DESIGN_SYSTEM §3.
+   Two gradients composited on top of the midnight-base to give the app a quiet
+   sense of life. Subtle by design — never compete with foreground content. */
 body {
-  background: linear-gradient(160deg, #0a1628, #1a2f4e, #0f1f38);
+  background-color: #0B1437; /* midnight-base */
+  background-image:
+    radial-gradient(ellipse 800px 600px at 10% 0%,   rgba(139,92,246,0.08), transparent 60%),
+    radial-gradient(ellipse 600px 600px at 90% 100%, rgba(236,72,153,0.06), transparent 60%);
   background-attachment: fixed;
   color: var(--text);
-  font-family: var(--font-manrope), 'Manrope', 'Inter', sans-serif;
+  font-family: var(--font-sans), var(--font-manrope), 'Inter', sans-serif;
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
