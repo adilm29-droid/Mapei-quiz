@@ -6,6 +6,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { Avatar } from '@/components/avatar/avatar'
 import { Badge } from '@/components/ui/badge'
 import { xpToNextLevel } from '@/lib/xp'
+import { FlairPicker } from './_components/flair-picker'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +17,7 @@ export default async function ProfilePage() {
   const supabase = getSupabaseAdmin()
   const { data: me } = await supabase
     .from('users')
-    .select('id, username, email, first_name, last_name, title, xp, level, current_streak, longest_streak, streak_freezes, role, status, avatar_url')
+    .select('id, username, email, first_name, last_name, title, xp, level, current_streak, longest_streak, streak_freezes, role, status, avatar_url, active_badge_id')
     .eq('id', session.userId)
     .maybeSingle()
   if (!me) redirect('/signin')
@@ -112,6 +113,9 @@ export default async function ProfilePage() {
             </div>
           </div>
         </section>
+
+        {/* Active flair picker (only renders if user has earned at least one badge) */}
+        <FlairPicker badges={badges} initialActive={me.active_badge_id ?? null} />
 
         {/* Badges grid */}
         <section>

@@ -7,6 +7,7 @@ import { Podium } from './_components/podium'
 import { QuizCta } from './_components/quiz-cta'
 import { MistakesRow } from './_components/mistakes-row'
 import { BadgesPreview } from './_components/badges-preview'
+import { RivalNudge } from './_components/rival-nudge'
 import { SignOutButton } from '@/app/admin/_components/sign-out-button'
 import { LogoFull } from '@/components/brand/LogoFull'
 
@@ -136,6 +137,20 @@ export default async function HomePage() {
     }))
   }
 
+  // ── 4b. Rival above me on the all-time XP leaderboard ─────────────
+  let rival: { username: string; first_name: string | null; last_name: string | null; title: string; xp: number } | null = null
+  {
+    const { data: aboveMe } = await supabase
+      .from('users')
+      .select('username, first_name, last_name, title, xp')
+      .eq('status', 'approved')
+      .gt('xp', me.xp ?? 0)
+      .order('xp', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    if (aboveMe) rival = aboveMe as any
+  }
+
   // ── 5. Recent mistakes (across all completed attempts, cap 20) ─────
   const { data: completedAttempts } = await supabase
     .from('attempts')
@@ -161,12 +176,19 @@ export default async function HomePage() {
     yourAnswerText: string
     correctAnswerText: string
     submittedAt: string
+    reviewed: boolean
   }[] = []
   if (uniqQids.length > 0) {
     const { data: qRows } = await supabase
       .from('questions')
       .select('id, question_text, option_a, option_b, option_c, option_d, correct_answer')
       .in('id', uniqQids)
+    const { data: reviewedRows } = await supabase
+      .from('reviewed_mistakes')
+      .select('question_id')
+      .eq('user_id', session.userId)
+      .in('question_id', uniqQids)
+    const reviewedSet = new Set<string>((reviewedRows ?? []).map((r: any) => r.question_id))
     const byId = new Map<string, any>((qRows ?? []).map((q: any) => [q.id, q]))
     const lookup = (q: any, letter: string) =>
       letter === 'A' ? q.option_a :
@@ -188,6 +210,7 @@ export default async function HomePage() {
         yourAnswerText: lookup(q, m.userLetter),
         correctAnswerText: lookup(q, q.correct_answer),
         submittedAt: m.submittedAt,
+        reviewed: reviewedSet.has(q.id),
       })
       if (mistakes.length >= 20) break
     }
@@ -236,6 +259,8 @@ export default async function HomePage() {
           completedCount={completedCount}
           freeCap={FREE_ATTEMPT_CAP}
         />
+
+        {rival && <RivalNudge rival={rival} yourXp={me.xp ?? 0} />}
 
         <MistakesRow mistakes={mistakes} />
 

@@ -6,10 +6,12 @@ Guidance for Claude Code working in this repo. Keep this current — when someth
 
 - **Next.js 16.2.4** (App Router) with **Turbopack** for both dev and build
 - **React 19.2.5** + **TypeScript** (`strict: false`, `allowJs: true` for legacy)
-- **Tailwind v3** with shadcn-style HSL theme tokens, `tailwindcss-animate`
-- **Manrope** font loaded via `next/font/google` as the only project font (legacy pages still reference Inter / Rajdhani via the `@import url(...)` in `globals.css`)
-- **motion** (the new framer-motion namespace), **gsap** for cloud parallax, **lucide-react** icons, **@radix-ui/react-slot** + **class-variance-authority** for the shadcn Button
-- **Supabase** (PostgreSQL) for storage, **Google Gemini** for question generation, **Zoho SMTP** via `nodemailer` for transactional email
+- **Tailwind v3** with shadcn-style HSL theme tokens, `tailwindcss-animate`, custom gradient/glow plugin
+- **Manrope** + **Inter Tight** + **Inter** + **JetBrains Mono** loaded via `next/font/google`
+- **motion** (the new framer-motion namespace), **gsap** for cloud parallax, **lucide-react** icons, **@radix-ui/{react-slot,react-dialog,react-tabs,react-dropdown-menu,react-tooltip}** primitives, **class-variance-authority** + **clsx** + **tailwind-merge**, **sonner** for toasts, **zod** for validation
+- **react-email** for all transactional templates
+- **bcryptjs** + **jsonwebtoken** for auth
+- **Supabase** (PostgreSQL) for storage, **Google Gemini** for question generation, **Zoho SMTP** via `nodemailer` for email
 
 Path alias `@/*` resolves to `./src/*`.
 
@@ -21,9 +23,7 @@ npm run build    # next build --turbopack
 npm start        # next start (production)
 ```
 
-No test or lint scripts. ESLint isn't wired up.
-
-When `.next/` is locked or stale (Spotlight on macOS occasionally creates a `dist 2/` shadow dir), use:
+If `.next/` is locked or stale (Spotlight on macOS occasionally creates a `dist 2/` shadow dir):
 
 ```bash
 until [ ! -d .next ]; do rm -rf .next 2>/dev/null; sleep 1; done && npm run dev
@@ -31,146 +31,174 @@ until [ ! -d .next ]; do rm -rf .next 2>/dev/null; sleep 1; done && npm run dev
 
 ## Architecture
 
-All pages are **`'use client'`** — there are no Server Components. Server work happens only inside `src/app/api/**/route.ts`. The browser does no Supabase queries directly anymore (auth was migrated to API routes); pages still talk to Supabase for non-auth reads via the legacy anon-key client.
+**Auth.** bcrypt-hashed passwords (server only), HTTP-only signed JWT cookie (`lpz_session`, HS256, 30-day, `{ userId, role }` payload). Two signup paths coexist:
+- **Self-signup** at `/signin` → row inserted with `status='pending'` → admin gets HMAC-signed approve/deny email → user can log in.
+- **Admin-creates** at `/admin/users` → row inserted with `status='approved'` → user gets credentials email immediately.
 
-### Auth flow (server-side, RLS-immune)
+**Sessions.** `src/lib/session.ts` (sign/verify/cookies). `src/lib/passwords.ts` (bcrypt at 12 rounds). `src/lib/auth-guard.ts` exposes `requireSession()` + `requireAdmin()` for route handlers. `src/lib/cron-guard.ts` validates Vercel cron's bearer token.
 
-1. **Browser → `POST /api/auth/login`** with `{ username, password }`.
-   - Server uses `getSupabaseAdmin()` (service-role key, bypasses RLS).
-   - Username matched case-insensitively (`.ilike()`), password trimmed.
-   - Returns `{ user }` on 200, `{ error }` with status 400/401/403/500 otherwise.
-2. **Browser → `POST /api/auth/register`** with `{ firstName, lastName, email, username, password }`.
-   - Inserts row with `status: 'pending'`, returns the new `user_id`.
-   - Server-side fires `POST /api/send-email` with `type: 'new_registration'`, including `user_id` and `origin`.
-3. **Email to admin** contains two HMAC-signed buttons (✓ APPROVE / ✕ DENY).
-4. **Admin clicks button → `GET /api/auth/decision?id=…&action=…&sig=…`**.
-   - HMAC verified using `SUPABASE_SERVICE_ROLE_KEY` as the signing secret (`src/lib/decision-token.ts`, constant-time compare).
-   - Updates user `status` to `approved` or `rejected`. Idempotent.
-   - On approve: fires welcome email (`type: 'approved'`) to the user's address.
-   - Returns a styled HTML confirmation page (no client JS).
-5. **Forgot password**: a dedicated card in `AuthForm` posts `type: 'password_reset_request'` to send-email. The email lands at `ADMIN_EMAIL` with a ready-to-paste SQL `UPDATE` line. Admin runs the SQL in Supabase, contacts the user with the new password.
+**Pages are mostly Server Components.** They read the session server-side and `redirect('/signin')` if absent. Heavy data fetches are batched in the page itself; client components handle interactivity.
 
-After login, AuthForm sets `localStorage.user = JSON.stringify(user)` and routes by role/avatar:
-- `role === 'admin'` → `/admin`
-- `avatar === 0` (never picked) → `/avatar`
-- otherwise → `/dashboard`
+**Quiz attempts.** Server-side authoritative scoring. Each attempt stores its own `question_order` (Fisher-Yates of question UUIDs) AND `option_orders` (per-question A/B/C/D shuffle). The client only sees its display slot; the server translates back via the stored map at answer-save time. Strict 30-minute timer (`expires_at = started_at + 30min`). Lazy expiry sweep on every attempt-route hit (no cron needed for this).
 
-Legacy pages (`/admin`, `/dashboard`, `/quiz`, etc.) still use the **anon-key client** in `src/lib/supabase.ts` and the auth-guard pattern (read `localStorage.user` in a `useEffect`, redirect to `/` if missing).
+**Gamification engine.** Pure modules in `src/lib/`:
+- `scoring.ts` — `computeScore(questions, answers)`: weighted sum of correct-answer points
+- `xp.ts` — `computeXpAward({ oldXp, correctCount, totalQuestions, isFirstMover, hitStreakMilestone })`: 50 base + 5/correct + 100 perfect + 25 first-mover + 50 streak-7 + 200 streak-30. `levelFromXp(xp) = floor(xp/1000) + 1`. 10-tier title roll-up.
+- `streaks.ts` — `applyStreak(...)`: edge cases per architecture §8 (first-quiz, same-day, gap=1, gap=2-with-freeze, reset). Grants 1 freeze every 7 days (cap 3). Reports milestones at 7/30/100/365.
+- `badges.ts` — `evaluateBadges(...)`: 13 of 14 catalog badges, idempotent inserts. `comeback_kid` is awarded by the leaderboard-reveal cron.
+- `quiz-engine.ts` — Fisher-Yates, slot↔letter translation, display mapping, `QUIZ_TIME_LIMIT_MS`, `FREE_ATTEMPT_CAP`.
+- `uae-time.ts` — fixed UTC+4 helpers (UAE doesn't observe DST).
+
+**Cron.** Two daily Vercel cron jobs (Hobby plan limit):
+- `/api/cron/reveal-leaderboards` — daily 20:05 UTC = 00:05 UAE. Flips `leaderboard_visible=true` for any quiz with ≥5 completes + 24h elapsed; emails every approved user.
+- `/api/cron/daily-emails` — daily 14:00 UTC = 18:00 UAE. (a) Streak-at-risk emails to users with `current_streak ≥ 5` who haven't completed a quiz today (idempotent via `email_log`). (b) Weekly recap on Sundays.
 
 ### Routes
 
 | Route | Type | Purpose |
 |---|---|---|
-| `/` | static (client-rendered) | Loading screen + hero + split-screen sign-in |
-| `/signin` | static | Standalone deep-link version of the auth form |
-| `/admin` | static, auth-guarded | Admin panel (legacy red-Mapei aesthetic) — review questions, manage users, generate via Gemini |
-| `/dashboard` | static, auth-guarded | User home — scores, badges, assigned quizzes |
-| `/quiz` | static, auth-guarded | Quiz gameplay (`?level=`, `?assignment=`) |
-| `/avatar` | static, auth-guarded | First-time avatar picker |
-| `/badges` | static, auth-guarded | Badge collection |
-| `/leaderboard` | static, auth-guarded | Top 10 scores |
-| `/profile` | static, auth-guarded | User profile + settings |
-| `/reports` | static, auth-guarded | Reporting screens |
-| `/api/auth/login` | dynamic, Node | POST — server-side login |
-| `/api/auth/register` | dynamic, Node | POST — server-side registration |
-| `/api/auth/decision` | dynamic, Node | GET — one-click approve/deny from email |
-| `/api/auth/_debug` | dynamic, Node | GET — diagnostic; reveals env-var shapes (no secrets), reachability probe |
-| `/api/generate` | dynamic, Node | POST — Gemini question generation |
-| `/api/send-email` | dynamic, Node | POST — Zoho SMTP transactional mail |
-| `not-found.tsx` | static | Explicit 404 (workaround for Next's built-in fallback hanging) |
+| `/` | static | Public landing (loading screen + hero + split-screen sign-in) |
+| `/signin` | static | Standalone sign-in / register form |
+| `/home` | dynamic, auth-guarded | Post-login podium home (header + podium + CTA + rival nudge + mistakes + badges) |
+| `/quiz/[id]` | dynamic, auth-guarded | Take-the-quiz screen — timer, options, navigation, resume, time-up modal |
+| `/quiz/[id]/results` | dynamic, auth-guarded | Orchestrated reveal — score tick → XP card → level-up → badge unlocks → streak |
+| `/quiz/[id]/review` | dynamic, auth-guarded | Per-Q breakdown with explanations |
+| `/leaderboard` | dynamic, auth-guarded | Tabs: This Quiz / All-Time. Top 10 + neighbors. |
+| `/profile` | dynamic, auth-guarded | XP bar, streak block, flair picker, full badge grid |
+| `/admin` | server-component layout | Auth gate (admin only) + tabs nav |
+| `/admin/users` | dynamic, admin | Create / edit / reset / promote / suspend |
+| `/admin/quizzes` | dynamic, admin | Upload JSON quiz · unlock toggle |
+| `/admin/library` | dynamic, admin | Every question across every quiz, grouped by difficulty, search, repeat-detection |
+| `/admin/requests` | dynamic, admin | Pending access requests · Approve / Deny |
+| `/dashboard` | static | Tombstone redirect → `/home` |
+| `/api/auth/{login,register,logout,decision}` | dynamic | Auth |
+| `/api/me` | dynamic | Current user payload |
+| `/api/me/active-badge` | dynamic | Set the flair shown on leaderboard |
+| `/api/me/mistakes/[questionId]/reviewed` | dynamic | Mark/unmark a mistake as reviewed |
+| `/api/admin/users/{,[id],[id]/reset-password}` | dynamic, admin | User CRUD |
+| `/api/admin/quizzes/{,[id]/unlock}` | dynamic, admin | JSON import + unlock toggle |
+| `/api/admin/access-requests/[id]/resolve` | dynamic, admin | Grant/deny re-attempt |
+| `/api/quizzes/[id]/{start,request-access}` | dynamic | Start an attempt or request a 3rd |
+| `/api/attempts/[id]/{,answer,submit}` | dynamic | Resume state · save answer · final submit (orchestrates score+XP+streak+badges) |
+| `/api/cron/{reveal-leaderboards,daily-emails}` | dynamic | Vercel cron entries |
+| `/api/send-email` | dynamic | Single email entry; renders react-email templates |
+| `/api/generate` | dynamic | Gemini question generation (legacy) |
+| `not-found.tsx` | static | Explicit 404 |
 
 ### Brand components
 
 `src/components/brand/`:
-- **`LogoMark.tsx`** — circular monogram only. `spin` prop applies the global `lpz-mark-spin` keyframe (defined in `globals.css`, GPU-promoted via `will-change: transform` + `translateZ(0)`).
+- **`LogoMark.tsx`** — circular monogram only. `spin` prop applies the global `lpz-mark-spin` keyframe.
 - **`LogoWordmark.tsx`** — "lapizblue" wordmark only.
-- **`LogoFull.tsx`** — both side-by-side with a vertical separator. `spinMark` prop forwards to LogoMark.
+- **`LogoFull.tsx`** — both side-by-side. `spinMark` prop forwards to LogoMark.
 
-The `<img src="/lapizblue-logo.png">` PNG was deleted; **never reintroduce it**. All headers use `<LogoFull />`.
+### Loading screen, hero, split-screen signin
 
-### Loading screen
+`src/components/loading-screen.tsx` plays once per session. `/` is the public hero with the GSAP-animated cloud canvas + the rotating power verbs. `<AuthForm />` (in `src/components/auth/`) is shared between `/signin` and the `/` split-screen.
 
-`src/components/loading-screen.tsx` — plays once per session (gated by `sessionStorage.lpz_intro_seen`). Midnight gradient + GSAP-animated cloud layers (radial gradients, no `filter: blur` because that tanks frame rate) + spinning monogram + "LOADING" label with pulsing dots. ~1300 ms then fades out via `AnimatePresence`.
+### UI primitives (`src/components/ui/`)
 
-### Split-screen interaction (landing)
+- `button.tsx` — shadcn-style with CVA variants
+- `gradient-button.tsx` — animated gradient border + outer blur halo, 6 gradient variants × 4 sizes (the magic CTAs)
+- `dialog.tsx`, `tabs.tsx`, `dropdown-menu.tsx`, `input.tsx`, `label.tsx`, `badge.tsx` — radix wrappers
+- `number-ticker.tsx` — Framer Motion `useMotionValue` + `useTransform` for the score reveal
 
-Click *Hop on the Quiz* on `/` → `setSplitMode(true)` → three things in parallel via spring animations:
-- CTA fades + scale-shrinks out
-- Hero panel `width` animates `100% → 50%` (hugs right edge)
-- `motion.aside` form panel slides in from `x: -100%`, renders `<AuthForm />`
+### Avatar
 
-The rotating power-words reel (`STRONGER → HARDER → SHARPER → WIN`) only ticks when `reelOn` is true (set on the same click).
+`src/components/avatar/avatar.tsx` — initials placeholder per design §5 v1, deterministic gradient from username, sm/md/lg/xl, `champion` (animated bobbing crown overlay), `isSelf` (pulse-aurora ring). `next/image` swap when `avatar_url` is set.
 
 ### Files with `// @ts-nocheck`
 
 Mechanical-rename casualties from the JS → TS migration. Don't remove the directive without converting the whole file:
 
-- `src/lib/supabase.ts`
-- `src/app/api/generate/route.ts`
-- `src/app/api/send-email/route.ts`
-- `src/app/admin/page.tsx`, `avatar/page.tsx`, `badges/page.tsx`, `dashboard/page.tsx`, `leaderboard/page.tsx`, `profile/page.tsx`, `quiz/page.tsx`, `reports/page.tsx`
+- `src/lib/supabase.ts` (legacy anon client; not imported by new code)
+- `src/app/api/generate/route.ts`, `src/app/api/send-email/route.ts`
+- `src/app/avatar/page.tsx`, `badges/page.tsx`, `reports/page.tsx` (legacy pages still referenced from old links)
 
-New code goes in **properly typed** files (`src/components/auth/AuthForm.tsx`, `src/lib/supabase-admin.ts`, `src/lib/decision-token.ts`, all `src/app/api/auth/**`).
+New code is properly typed (everything under `src/lib/{session,passwords,auth-guard,cron-guard,scoring,xp,streaks,badges,quiz-engine,uae-time,types,utils,decision-token,supabase-admin,gradient-from-string}`, `src/components/`, `src/emails/`, all `src/app/api/{auth,me,admin,quizzes,attempts,cron}/**`).
 
 ### Database schema
 
-`supabase_setup.sql` + `migration.sql` define seven tables: `users`, `questions`, `attempts`, `scores`, `badges`, `assignments`, `certificates`. **RLS is disabled** on all of them — server code uses the service-role key which bypasses RLS regardless. The browser's anon-key client reads only via the legacy non-auth code paths; if you ever re-enable RLS, those pages need policies.
+`supabase/migrations/` (run in order):
+1. `001_quiz_scoring.sql` — adds `questions.points`, `questions.difficulty`, `quizzes.max_score`
+2. `002_seed_quiz_1.sql` — generated from `supabase/seeds/mapei_quiz_1.json`. 30 questions; max 57. Idempotent re-run.
+3. `003_reset_to_fresh.sql` — wipe non-admin users + all per-user state + lock all quizzes; leaves Tarun + the seeded questions in place.
 
-`users` columns: `id` (uuid), `username`, `password` (**plaintext, intentionally**), `role` (`'user' | 'admin'`), `status` (`'pending' | 'approved' | 'rejected'`), `xp`, `rank`, `avatar`, `first_name`, `last_name`, `email`, `created_at`.
+The original schema lives in `supabase/schema_reset.sql`. RLS is **off** on every app table — server uses the service-role key, browser never queries directly except via the legacy `supabase.ts` anon client which a few legacy pages still import.
 
-The seed admin row is `username='tarun', password='LapizBlue@2026', role='admin', status='approved'` (created via SQL by the user, not in setup script).
+`users` columns: `id`, `username`, `password_hash`, `email`, `first_name`, `last_name`, `role` (`admin|staff`), `status` (`pending|approved|rejected|suspended`), `avatar_url`, `xp`, `level`, `title`, `current_streak`, `longest_streak`, `streak_freezes`, `last_quiz_date`, `active_badge_id`, `created_at`, `updated_at`.
 
 ### Email types (`/api/send-email`)
 
-| `type` | To | When |
+| `type` | To | Trigger |
 |---|---|---|
-| `new_registration` | `ADMIN_EMAIL` | A user submitted the create-account form. Body contains HMAC-signed approve/deny buttons. |
-| `password_reset_request` | `ADMIN_EMAIL` | A user clicked Forgot password. Body contains the SQL UPDATE recipe. |
-| `approved` | user's email | Admin clicked APPROVE. Welcome message + their username. |
-| `quiz_assigned` | user's email | A quiz was assigned to them. |
-| `certificate_earned` | user's email | They passed a level. |
+| `account_created` | new user | Admin creates user OR resets password |
+| `new_registration` | `ADMIN_EMAIL` | Self-signup form submission. Body has HMAC-signed approve/deny buttons. |
+| `password_reset_request` | `ADMIN_EMAIL` | User clicked "Forgot password" |
+| `approved` | user | (legacy welcome — also fired from /api/auth/decision approve) |
+| `quiz_assigned` | user | (legacy) |
+| `certificate_earned` | user | (legacy) |
+| `leaderboard_live` | every approved user | Reveal cron fires |
+| `streak_milestone` | user | Streak hits 7/30/100/365 (currently fires from results screen via XP path; can also be sent server-side) |
+| `streak_at_risk` | user | Daily-emails cron, when streak ≥ 5 and no quiz today (idempotent via `email_log`) |
+| `weekly_recap` | every approved user | Daily-emails cron, Sundays only, only if user had any activity that week |
+| `access_request_received` | `ADMIN_EMAIL` | User requests a 3rd attempt |
+| `access_request_resolved` | user | Admin clicks Approve/Deny in `/admin/requests` |
 
-`ADMIN_EMAIL` defaults to `'tarun.s@lapizblue.com'` (hardcoded in `send-email/route.ts`), overridable by `process.env.ADMIN_EMAIL`. **Do not reuse `ZOHO_EMAIL` for the destination** — that env var is the SMTP login user (currently `adil@lapizblue.com`) and serves as the From address only.
+`ADMIN_EMAIL` defaults to `'tarun.s@lapizblue.com'` (overridable). `ZOHO_EMAIL` is the SMTP login, NOT the destination.
 
 ## Environment variables
 
-Required (gitignored, in `.env.local` locally and in Vercel Project Settings → Environment Variables for Production + Preview + Development):
+Required (gitignored, in `.env.local` locally and in Vercel for Production + Preview + Development):
 
 | Variable | Where used | Notes |
 |---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | client + server | `https://feztkhsjsfcogbvxhmgk.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | client (legacy pages) | `sb_publishable_…` (newer Supabase format) |
-| `SUPABASE_SERVICE_ROLE_KEY` | server only — auth + decision routes + HMAC signing | `sb_secret_…` (newer format). Bypasses RLS. **Rotate immediately if exposed.** |
-| `ZOHO_EMAIL`, `ZOHO_PASSWORD` | server — `/api/send-email` SMTP login | Currently authenticated as `adil@lapizblue.com`. Used only as From address; not as a destination. |
-| `GEMINI_API_KEY` | server — `/api/generate` | For AI question generation |
-| `ADMIN_EMAIL` (optional) | server — destination override | Defaults to `'tarun.s@lapizblue.com'` if unset |
+| `NEXT_PUBLIC_SUPABASE_URL` | client + server | `https://<project>.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | client (legacy pages) | `sb_publishable_…` |
+| `SUPABASE_SERVICE_ROLE_KEY` | server only | `sb_secret_…`. Bypasses RLS. **Rotate immediately if exposed.** |
+| `SESSION_SECRET` | server | 96-char random hex; signs the JWT cookie. Min 32 chars. |
+| `CRON_SECRET` | server | 96-char random hex; Vercel cron bearer auth. |
+| `ZOHO_EMAIL`, `ZOHO_PASSWORD` | server | SMTP credentials |
+| `GEMINI_API_KEY` | server (legacy `/api/generate`) | |
+| `ADMIN_EMAIL` (optional) | server | Defaults to `'tarun.s@lapizblue.com'` |
 
-After changing any Vercel env var: **redeploy with "Use existing Build Cache" UNCHECKED**. Vercel bakes env vars at build time.
+After changing any Vercel env var: **redeploy with "Use existing Build Cache" UNCHECKED**.
+
+## Vercel cron (`vercel.json`)
+
+```json
+{
+  "crons": [
+    { "path": "/api/cron/reveal-leaderboards", "schedule": "5 20 * * *" },
+    { "path": "/api/cron/daily-emails",        "schedule": "0 14 * * *" }
+  ]
+}
+```
+
+(All times UTC. UAE = UTC+4. So 20:05 UTC = 00:05 UAE; 14:00 UTC = 18:00 UAE.)
 
 ## Styling
 
-Dark theme. Two coexisting systems:
-
-1. **New (`src/app/page.tsx`, `/signin`, brand components, AuthForm, LoadingScreen)** — Tailwind utility classes + shadcn HSL tokens, midnight-blue (`#040a1c → #0a1740`) palette, white/icy-blue accents, Manrope font, iOS-curved glassy inputs (`rounded-2xl bg-white/5 backdrop-blur-md`).
-2. **Legacy (every other page)** — CSS variables + custom component classes (`.btn`, `.card`, `.navbar`) in `globals.css`, Mapei red `#E30613` accent, inline `style={{...}}` everywhere. The body falls back to a different gradient than the new pages — this is intentional during the migration.
-
-Don't write new code in the legacy style. New screens should consume the Tailwind/shadcn token system.
+Two coexisting systems:
+1. **New (every screen except a few legacy pages)** — Tailwind utility classes + shadcn HSL tokens, midnight-blue palette, gradient utilities (`bg-gradient-aurora`, etc.), `.tabular` for numerics, the design-system type scale.
+2. **Legacy** — CSS variables in `globals.css`, Mapei red `#E30613`, inline styles. Still used by `/avatar`, `/badges`, `/reports`. Do not write new code in this style.
 
 ## Deployment
 
-Vercel auto-deploys every push to `main` (repo: `adilm29-droid/Mapei-quiz`). The live URL is `https://mapei-quiz.vercel.app`. The included `update.py` script does `git add → commit → push` in one shot if you want the legacy quick-push behavior; otherwise standard git is fine.
-
-Vercel's hobby plan is sufficient — env vars + serverless Node functions work the same as paid.
+Vercel auto-deploys every push to `main`. The live URL is `https://mapei-quiz.vercel.app`. Hobby plan is sufficient.
 
 ## Operational quirks (learned the hard way)
 
-- **macOS Spotlight breaks `npm install`**. If `node_modules/next/dist/` shows up as `dist 2/` (with a literal space), Spotlight indexed during extraction. Fix: `rm -rf node_modules package-lock.json && npm install` and don't touch the folder for ~30 s after install completes. Adding `node_modules/` to Spotlight's Privacy list prevents this.
-- **`.next` write conflicts**. Production build writes `.next/`, dev expects `.next/dev/`. Switching between them without wiping yields `Cannot find module './701.js'` or `routes-manifest.json` ENOENT. Always `rm -rf .next` between `next build` and `next dev`.
+- **macOS Spotlight breaks `npm install`**. If `node_modules/next/dist/` shows up as `dist 2/` (with a literal space), Spotlight indexed during extraction. Fix: `rm -rf node_modules package-lock.json && npm install` and don't touch the folder for ~30s. Adding `node_modules/` to Spotlight Privacy permanently solves it.
+- **`.next` write conflicts**. Switching between `next build` and `next dev` without wiping yields ENOENT errors. Always `rm -rf .next` between modes.
 - **Turbopack rejects `<style jsx>`** and **`@import` after other CSS rules**. Both already cleaned up; keep them out.
-- **`/_debug` and underscore-prefixed routes are private to Next** — useful pattern for diagnostic endpoints we don't want indexed.
+- **Vercel Hobby cron**: only daily schedules, max 2 jobs. We use both — the lazy-sweep pattern (run on every attempt-route hit) replaces a 3rd cron we'd otherwise need for incomplete-attempt cleanup.
+- **zsh + `[id]` paths**: zsh globs `[id]` as a character class. Quote them in shell commands: `'src/app/quiz/[id]/...'`.
 
 ## Security notes
 
-- **Passwords are plaintext** in the `users` table. Acceptable for the current internal-only use case. If this ever goes to a wider audience, switch to bcrypt and add a server-side login route that does the hash compare (the route exists; just swap the password check).
-- The Supabase service-role key (`SUPABASE_SERVICE_ROLE_KEY`) is full DB admin. Never log it, never return it from a client-reachable endpoint, never paste it in chat. Rotate immediately if exposed.
-- HMAC-signed approve/deny URLs are constant-time compared via `crypto.timingSafeEqual`. Random URLs cannot approve/reject anyone.
+- **Passwords are bcrypt-hashed (12 rounds)** in `users.password_hash`. The browser never sees a hash.
+- **Sessions are HTTP-only signed JWT cookies.** Payload is minimal — `{ userId, role }`. Anything else is fetched from DB.
+- **The Supabase service-role key** bypasses RLS. Never log it, never return it from a client-reachable endpoint, never paste it in chat. Rotate immediately if exposed.
+- **HMAC-signed approve/deny URLs** use `crypto.timingSafeEqual` for constant-time compare.
+- **Cron routes** require `Authorization: Bearer ${CRON_SECRET}` (Vercel injects this automatically for routes referenced in `vercel.json`).

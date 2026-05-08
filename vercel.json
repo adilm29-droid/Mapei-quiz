@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/reveal-leaderboards",
+      "schedule": "5 20 * * *"
+    },
+    {
+      "path": "/api/cron/daily-emails",
+      "schedule": "0 14 * * *"
+    }
+  ]
+}

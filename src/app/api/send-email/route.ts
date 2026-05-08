@@ -19,6 +19,12 @@ import PasswordResetRequest from '@/emails/PasswordResetRequest'
 import Approved from '@/emails/Approved'
 import QuizAssigned from '@/emails/QuizAssigned'
 import CertificateEarned from '@/emails/CertificateEarned'
+import LeaderboardLive from '@/emails/LeaderboardLive'
+import StreakMilestone from '@/emails/StreakMilestone'
+import StreakAtRisk from '@/emails/StreakAtRisk'
+import WeeklyRecap from '@/emails/WeeklyRecap'
+import AccessRequestReceived from '@/emails/AccessRequestReceived'
+import AccessRequestResolved from '@/emails/AccessRequestResolved'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -128,6 +134,99 @@ export async function POST(request) {
             level: data.level,
             score: data.score,
             cert_url: data.cert_url,
+          }),
+        )
+        break
+      }
+
+      case 'leaderboard_live': {
+        to = data.email
+        subject = `🏆 Week ${data.week_number} leaderboard is live`
+        html = await render(
+          LeaderboardLive({
+            first_name: data.first_name,
+            quiz_title: data.quiz_title,
+            week_number: data.week_number,
+            podium: data.podium,
+            user_rank: data.user_rank,
+            leaderboard_url: data.leaderboard_url,
+          }),
+        )
+        break
+      }
+
+      case 'streak_milestone': {
+        to = data.email
+        subject = `🔥 ${data.streak_days}-day streak — new badge unlocked`
+        html = await render(
+          StreakMilestone({
+            first_name: data.first_name,
+            streak_days: data.streak_days,
+            badge_name: data.badge_name,
+            profile_url: data.profile_url,
+          }),
+        )
+        break
+      }
+
+      case 'streak_at_risk': {
+        to = data.email
+        subject = `🔥 Don't lose your ${data.streak_days}-day streak`
+        html = await render(
+          StreakAtRisk({
+            first_name: data.first_name,
+            streak_days: data.streak_days,
+            hours_left: data.hours_left,
+            has_freeze: data.has_freeze,
+            freeze_count: data.freeze_count,
+            quiz_url: data.quiz_url,
+          }),
+        )
+        break
+      }
+
+      case 'weekly_recap': {
+        to = data.email
+        subject = 'Your week in numbers'
+        html = await render(
+          WeeklyRecap({
+            first_name: data.first_name,
+            quizzes_completed: data.quizzes_completed,
+            xp_earned: data.xp_earned,
+            current_streak: data.current_streak,
+            badges_earned_this_week: data.badges_earned_this_week,
+            rank_change: data.rank_change,
+            home_url: data.home_url,
+          }),
+        )
+        break
+      }
+
+      case 'access_request_received': {
+        to = ADMIN_EMAIL
+        subject = `Access request: ${data.user_name}`
+        html = await render(
+          AccessRequestReceived({
+            user_name: data.user_name,
+            username: data.username,
+            quiz_title: data.quiz_title,
+            attempts_used: data.attempts_used,
+            approve_url: data.approve_url,
+            reject_url: data.reject_url,
+          }),
+        )
+        break
+      }
+
+      case 'access_request_resolved': {
+        to = data.email
+        subject = data.granted ? 'Your request was approved' : 'Your request was reviewed'
+        html = await render(
+          AccessRequestResolved({
+            first_name: data.first_name,
+            quiz_title: data.quiz_title,
+            granted: !!data.granted,
+            quiz_url: data.quiz_url,
           }),
         )
         break
