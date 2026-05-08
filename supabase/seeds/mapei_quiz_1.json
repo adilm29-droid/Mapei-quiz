@@ -33,10 +33,10 @@
     {
       "id": 2,
       "difficulty": "very_easy",
-      "question": "What colour options does Adesilex P7 come in?",
-      "options": ["White only", "Grey only", "White or Grey", "16 colours"],
-      "correct_answer": "Grey only",
-      "explanation": "Adesilex P7 is the only standard cementitious adhesive in the Mapei ceramic line offered in grey only — no white version.",
+      "question": "What colour options does Adesilex P10 come in?",
+      "options": ["Grey only", "White only", "White or Grey", "16 colours"],
+      "correct_answer": "White only",
+      "explanation": "Adesilex P10 is offered in white only — typically used for translucent or glass mosaics where a grey adhesive would bleed through and show. Unlike most cementitious adhesives that ship in both white and grey, P10 has only the white version.",
       "source_sheet": "Master"
     },
 

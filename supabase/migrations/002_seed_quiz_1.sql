@@ -6,7 +6,6 @@
 -- Idempotent — re-runs replace the seed quiz cleanly.
 -- =============================================================
 
--- Drop and recreate the seed quiz so re-runs are clean.
 DELETE FROM quizzes WHERE title = 'Mapei Ceramic Line — Product Knowledge';
 
 WITH q AS (
@@ -16,7 +15,7 @@ WITH q AS (
 )
 INSERT INTO questions (quiz_id, question_text, option_a, option_b, option_c, option_d, correct_answer, explanation, category, difficulty, points, order_index) VALUES
 ((SELECT id FROM q), 'Which Mapei product is a two-component adhesive that uses a latex liquid instead of water?', 'Keraflex', 'Granirapid', 'Adesilex P9', 'Kerabond Plus', 'B', 'Granirapid is a two-component system — Part A powder is mixed directly into Part B latex; no water is added.', 'Master / Mix Prep', 'very_easy', 1, 0),
-((SELECT id FROM q), 'What colour options does Adesilex P7 come in?', 'White only', 'Grey only', 'White or Grey', '16 colours', 'B', 'Adesilex P7 is the only standard cementitious adhesive in the Mapei ceramic line offered in grey only — no white version.', 'Master', 'very_easy', 1, 1),
+((SELECT id FROM q), 'What colour options does Adesilex P10 come in?', 'Grey only', 'White only', 'White or Grey', '16 colours', 'B', 'Adesilex P10 is offered in white only — typically used for translucent or glass mosaics where a grey adhesive would bleed through and show. Unlike most cementitious adhesives that ship in both white and grey, P10 has only the white version.', 'Master', 'very_easy', 1, 1),
 ((SELECT id FROM q), 'What is the bag size of the Ultralite S2 adhesive?', '15 kg', '20 kg', '25 kg', '30.5 kg', 'A', 'All three Ultralite products (S1, S2, S2 Quick) come in 15 kg lightweight bags — same volume as a conventional 25 kg bag.', 'Master', 'very_easy', 1, 2),
 ((SELECT id FROM q), 'Keracolor FF is which type of product?', 'Tile adhesive', 'Cementitious grout', 'Silicone sealant', 'Epoxy adhesive', 'B', 'Keracolor FF is a polymer-modified cementitious grout (CG2WA) for joints up to 6 mm — it fills tile joints, it does not bond tiles.', 'Master / Distinctions', 'very_easy', 1, 3),
 ((SELECT id FROM q), 'Mapesil AC is supplied in what packaging?', '15 kg bag', '25 kg bag', '10 kg kit', '310 ml cartridge', 'D', 'Mapesil AC is a one-component silicone sealant supplied in 310 ml cartridges — applied with a standard caulking gun.', 'Master', 'very_easy', 1, 4),
