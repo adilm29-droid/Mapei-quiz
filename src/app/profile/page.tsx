@@ -114,6 +114,17 @@ export default async function ProfilePage() {
           </div>
         </section>
 
+        {/* Past attempts shortcut */}
+        <section>
+          <Link
+            href="/profile/attempts"
+            className="flex items-center justify-between rounded-2xl border border-midnight-line bg-midnight-elevated px-5 py-4 text-caption text-whitex-soft hover:bg-midnight-line"
+          >
+            <span className="font-semibold text-white">Past attempts</span>
+            <span className="text-whitex-muted">View your Attempt 1s + reports →</span>
+          </Link>
+        </section>
+
         {/* Active flair picker (only renders if user has earned at least one badge) */}
         <FlairPicker badges={badges} initialActive={me.active_badge_id ?? null} />
 
