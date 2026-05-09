@@ -131,7 +131,19 @@ export function QuizClient({ quizId }: { quizId: string }) {
           }),
         }).catch(() => {})
       }
-      await fetch(`/api/attempts/${state.attemptId}/submit`, { method: 'POST' }).catch(() => {})
+      // Pass `claim` so the server can return 409 if a parallel tab beat
+      // us to the leaderboard slot (per CLAUDE_CODE_PROMPT.md §11 race).
+      const submitRes = await fetch(`/api/attempts/${state.attemptId}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ claim: state.attempt_kind }),
+      }).catch(() => null)
+      if (submitRes && submitRes.status === 409) {
+        // Parallel-tab race lost — surface and let the user re-route to
+        // the practice path. The server has not mutated state.
+        router.push(`/quiz/${quizId}?practice=1`)
+        return
+      }
       router.push(`/quiz/${quizId}/results?attempt=${state.attemptId}`)
     },
     [state, selected, submitting, router, quizId],
@@ -200,6 +212,15 @@ export function QuizClient({ quizId }: { quizId: string }) {
           <p className="font-mono text-caption tabular text-whitex-muted">
             Q {state.currentQuestionIndex + 1} of {state.totalQuestions}
           </p>
+          {state.attempt_kind === 'practice' ? (
+            <span className="rounded-full bg-aurora-from/15 px-2 py-0.5 text-micro font-semibold uppercase tracking-wider text-aurora-from ring-1 ring-aurora-from/40">
+              🎯 Practice
+            </span>
+          ) : (
+            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-micro font-semibold uppercase tracking-wider text-amber-300 ring-1 ring-amber-400/40">
+              🏆 Leaderboard try
+            </span>
+          )}
         </div>
         <Timer expiresAt={state.expiresAt} onExpired={onTimeExpired} />
       </div>

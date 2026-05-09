@@ -8,6 +8,7 @@ import { QuizCta } from './_components/quiz-cta'
 import { MistakesRow } from './_components/mistakes-row'
 import { BadgesPreview } from './_components/badges-preview'
 import { RivalNudge } from './_components/rival-nudge'
+import { QuizCards, type QuizCardItem } from './_components/quiz-cards'
 import { SignOutButton } from '@/app/admin/_components/sign-out-button'
 import { LogoFull } from '@/components/brand/LogoFull'
 
@@ -220,6 +221,52 @@ export default async function HomePage() {
     }
   }
 
+  // ── 5b. Netflix-style quiz cards (all unlocked actual + practice) ──
+  const { data: rawAllQuizzes } = await supabase
+    .from('quizzes')
+    .select('id, title, type, week_number, is_unlocked, max_score, cover_image_url')
+    .is('deleted_at', null)
+    .order('week_number', { ascending: false })
+  const allQuizzes = (rawAllQuizzes ?? []) as any[]
+  const allQuizIds = allQuizzes.map(q => q.id)
+  const questionCounts: Record<string, number> = {}
+  if (allQuizIds.length > 0) {
+    const { data: qs } = await supabase
+      .from('questions')
+      .select('quiz_id')
+      .in('quiz_id', allQuizIds)
+    for (const r of (qs ?? []) as any[]) {
+      questionCounts[r.quiz_id] = (questionCounts[r.quiz_id] ?? 0) + 1
+    }
+  }
+  // Quizzes the current user has completed an LB attempt on (so the
+  // ranked card hints "Practice" for those instead of "Ranked")
+  const { data: myLbRows } = await supabase
+    .from('attempts')
+    .select('quiz_id')
+    .eq('user_id', session.userId)
+    .eq('is_leaderboard_attempt', true)
+    .is('deleted_at', null)
+    .eq('is_complete', true)
+  const completedActualIds = new Set<string>(
+    (myLbRows ?? []).map((r: any) => r.quiz_id),
+  )
+
+  const cardItems: QuizCardItem[] = allQuizzes.map(q => ({
+    id: q.id,
+    title: q.title,
+    type: (q.type as 'actual' | 'practice') ?? 'actual',
+    week_number: q.week_number ?? null,
+    cover_image_url: q.cover_image_url ?? null,
+    is_unlocked: !!q.is_unlocked,
+    max_score: q.max_score ?? null,
+    question_count: questionCounts[q.id] ?? 0,
+  }))
+  const actualCards = cardItems.filter(
+    c => c.type === 'actual' && (c.is_unlocked || me.role === 'admin'),
+  )
+  const practiceCards = cardItems.filter(c => c.type === 'practice')
+
   // ── 6. Badges (full catalog + earned set) ──────────────────────────
   const { data: catalog } = await supabase
     .from('badges')
@@ -265,6 +312,12 @@ export default async function HomePage() {
         />
 
         {rival && <RivalNudge rival={rival} yourXp={me.xp ?? 0} />}
+
+        <QuizCards
+          actualQuizzes={actualCards}
+          practiceQuizzes={practiceCards}
+          completedActualIds={completedActualIds}
+        />
 
         <MistakesRow mistakes={mistakes} />
 
