@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { Eye } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { UserRowActions } from './user-row-actions'
 import type { AdminUserRow } from './types'
@@ -65,6 +66,7 @@ export function UserTable({
               <th className="px-5 py-3 text-right font-medium">XP</th>
               <th className="px-5 py-3 text-right font-medium">Level</th>
               <th className="px-5 py-3 font-medium">Last Active</th>
+              <th className="px-5 py-3 text-right font-medium">Report</th>
               <th className="w-12 px-5 py-3 text-right font-medium">{''}</th>
             </tr>
           </thead>
@@ -98,6 +100,15 @@ export function UserTable({
                 </td>
                 <td className="px-5 py-3 text-caption text-whitex-muted">
                   {formatRel(u.last_quiz_date || u.updated_at)}
+                </td>
+                <td className="px-5 py-3 text-right">
+                  <Link
+                    href={`/admin/users/${u.id}`}
+                    className="inline-flex items-center gap-1 rounded-md border border-midnight-line bg-midnight-base px-2.5 py-1 text-micro font-semibold text-whitex-soft hover:bg-midnight-line hover:text-white"
+                  >
+                    <Eye className="h-3 w-3" />
+                    View report
+                  </Link>
                 </td>
                 <td className="px-5 py-3 text-right">
                   <UserRowActions user={u} onChange={onChange} />

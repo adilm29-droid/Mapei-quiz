@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Download, Trophy } from 'lucide-react'
+import { ArrowLeft, Download, Eye, Trophy } from 'lucide-react'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { Avatar } from '@/components/avatar/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -170,7 +170,8 @@ export default async function AdminUserOverview({
                   <th className="px-4 py-2 text-right font-medium">Time</th>
                   <th className="px-4 py-2 text-right font-medium">XP</th>
                   <th className="px-4 py-2 font-medium">IP</th>
-                  <th className="px-4 py-2 text-right font-medium">{''}</th>
+                  <th className="px-4 py-2 text-right font-medium">View</th>
+                  <th className="px-4 py-2 text-right font-medium">PDF</th>
                 </tr>
               </thead>
               <tbody>
@@ -202,6 +203,15 @@ export default async function AdminUserOverview({
                       </td>
                       <td className="px-4 py-2 font-mono text-micro text-whitex-faint">
                         {a.ip_address ?? '—'}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <Link
+                          href={`/admin/users/${userId}/attempts/${a.id}`}
+                          className="inline-flex items-center gap-1 rounded-md border border-aurora-from/40 bg-aurora-from/10 px-2.5 py-1 text-micro font-semibold text-aurora-from hover:bg-aurora-from/20"
+                        >
+                          <Eye className="h-3 w-3" />
+                          Wrong answers
+                        </Link>
                       </td>
                       <td className="px-4 py-2 text-right">
                         <a
