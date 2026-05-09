@@ -114,14 +114,21 @@ export default async function ProfilePage() {
           </div>
         </section>
 
-        {/* Past attempts shortcut */}
-        <section>
+        {/* Past attempts + achievements shortcuts */}
+        <section className="grid gap-3 sm:grid-cols-2">
           <Link
             href="/profile/attempts"
             className="flex items-center justify-between rounded-2xl border border-midnight-line bg-midnight-elevated px-5 py-4 text-caption text-whitex-soft hover:bg-midnight-line"
           >
             <span className="font-semibold text-white">Past attempts</span>
-            <span className="text-whitex-muted">View your Attempt 1s + reports →</span>
+            <span className="text-whitex-muted">View Attempt 1s + reports →</span>
+          </Link>
+          <Link
+            href="/profile/achievements"
+            className="flex items-center justify-between rounded-2xl border border-midnight-line bg-midnight-elevated px-5 py-4 text-caption text-whitex-soft hover:bg-midnight-line"
+          >
+            <span className="font-semibold text-white">Achievements</span>
+            <span className="text-whitex-muted">Full catalog →</span>
           </Link>
         </section>
 

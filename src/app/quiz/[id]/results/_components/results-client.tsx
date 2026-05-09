@@ -7,6 +7,7 @@ import { Flame, Trophy, Sparkles, Star } from 'lucide-react'
 import { GradientButton } from '@/components/ui/gradient-button'
 import { Button } from '@/components/ui/button'
 import { NumberTicker } from '@/components/ui/number-ticker'
+import { AchievementToastStack, type AchievementForToast } from '@/components/motion/achievement-toast'
 import type { AttemptResultForClient } from '@/lib/types'
 
 export function ResultsClient({ quizId, attemptId }: { quizId: string; attemptId: string }) {
@@ -14,6 +15,24 @@ export function ResultsClient({ quizId, attemptId }: { quizId: string; attemptId
   const [stage, setStage] = useState<'score' | 'xp' | 'levelUp' | 'badges' | 'streak' | 'cta'>('score')
   const [error, setError] = useState<string | null>(null)
   const [badgeIdx, setBadgeIdx] = useState(0)
+  const [activeToasts, setActiveToasts] = useState<AchievementForToast[]>([])
+
+  // When the result lands, queue up achievement toasts. They render as a
+  // stack in the bottom-right and auto-dismiss after 4s each.
+  useEffect(() => {
+    if (!result?.newAchievements?.length) return
+    const queued: AchievementForToast[] = result.newAchievements.map(a => ({
+      id: a.id,
+      name: a.name,
+      description: a.description,
+      tier_color: a.tier_color,
+    }))
+    setActiveToasts(queued)
+  }, [result])
+
+  function dismissToast(id: string) {
+    setActiveToasts(prev => prev.filter(t => t.id !== id))
+  }
 
   // Submit (idempotent — server returns the same payload if already submitted)
   useEffect(() => {
@@ -279,6 +298,8 @@ export function ResultsClient({ quizId, attemptId }: { quizId: string; attemptId
 
         <Trophy className="pointer-events-none invisible h-0 w-0" />
       </div>
+
+      <AchievementToastStack toasts={activeToasts} onDismiss={dismissToast} />
     </div>
   )
 }
