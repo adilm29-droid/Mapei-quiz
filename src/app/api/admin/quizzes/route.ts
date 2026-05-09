@@ -9,6 +9,21 @@ export const dynamic = 'force-dynamic'
 const VALID_DIFF = new Set<Difficulty>(['very_easy', 'easy', 'practical', 'medium'])
 
 /**
+ * Some JSON exports (e.g. mapei_quiz_2_beginner.json) put a single difficulty
+ * descriptor at the top level instead of repeating it on every question.
+ * Tolerate things like "all very_easy", "all easy", "very_easy", etc.
+ */
+function inferTopLevelDifficulty(raw: unknown): Difficulty | null {
+  if (typeof raw !== 'string') return null
+  const s = raw.toLowerCase()
+  if (s.includes('very_easy') || s.includes('very easy')) return 'very_easy'
+  if (s.includes('practical')) return 'practical'
+  if (s.includes('medium')) return 'medium'
+  if (s.includes('easy')) return 'easy'
+  return null
+}
+
+/**
  * POST /api/admin/quizzes
  *
  * Imports a full quiz from JSON in the shape of mapei_quiz_1.json.
@@ -34,6 +49,12 @@ export async function POST(request: Request) {
   if (errors.length > 0) return NextResponse.json({ errors }, { status: 400 })
 
   const questions = (body as any).questions as QuizImportPayload['questions']
+
+  // If the JSON declares an overall difficulty (top-level), use it as the
+  // default when individual questions don't carry their own. The first batch
+  // ("mapei_quiz_1.json") had per-question difficulty; the beginner batch
+  // says "all very_easy" at the top with no per-question field.
+  const topLevelDiff = inferTopLevelDifficulty((body as any).difficulty)
 
   // Validate every question
   const cleaned: {
@@ -69,8 +90,11 @@ export async function POST(request: Request) {
       errors.push(`Q${id}: correct_answer must be one of options`)
       return
     }
-    if (!VALID_DIFF.has(q.difficulty)) {
-      errors.push(`Q${id}: difficulty must be very_easy / easy / practical / medium`)
+    const effectiveDiff: Difficulty | undefined = q.difficulty ?? topLevelDiff ?? undefined
+    if (!effectiveDiff || !VALID_DIFF.has(effectiveDiff)) {
+      errors.push(
+        `Q${id}: difficulty must be very_easy / easy / practical / medium (and either set per-question or implied by a top-level "difficulty" field)`,
+      )
       return
     }
     const letter = (['A', 'B', 'C', 'D'] as const)[ci]
@@ -83,8 +107,8 @@ export async function POST(request: Request) {
       correct_answer: letter,
       explanation: q.explanation ?? null,
       category: (q as any).source_sheet ?? (q as any).category ?? null,
-      difficulty: q.difficulty,
-      points: DIFFICULTY_POINTS[q.difficulty],
+      difficulty: effectiveDiff,
+      points: DIFFICULTY_POINTS[effectiveDiff],
       order_index: i,
     })
   })

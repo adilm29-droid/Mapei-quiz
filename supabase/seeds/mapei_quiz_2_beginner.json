@@ -1,0 +1,287 @@
+{
+  "quiz_title": "Mapei Ceramic Line — Beginner Quiz (Very Simple)",
+  "audience": "Sales / showroom staff — entry level / new joiners",
+  "source": "MAPEI_PRODUCT_KNOWLEDGE.xlsx — built from official Mapei TDSs",
+  "total_questions": 30,
+  "difficulty": "all very_easy — single-fact recall, one obvious data point per question",
+  "scoring": {
+    "points_per_question": 1,
+    "max_score": 30,
+    "suggested_pass_mark": "24 / 30 (80%)"
+  },
+  "design_notes": "Distractors are still real values from other Mapei products in the same column, but the correct answers are the most basic, most-asked facts — bag size, colour, what it is, etc.",
+
+  "questions": [
+
+    {
+      "id": 1,
+      "question": "What is the standard bag size of Keraflex Maxi S1 Zero?",
+      "options": ["15 kg", "20 kg", "25 kg", "30 kg"],
+      "correct_answer": "25 kg",
+      "explanation": "Keraflex Maxi S1 Zero comes in a 25 kg bag — the standard cementitious adhesive bag size.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 2,
+      "question": "What is the bag size of Mapeset?",
+      "options": ["15 kg", "20 kg", "25 kg", "10 kg"],
+      "correct_answer": "25 kg",
+      "explanation": "Mapeset is supplied in a 25 kg bag.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 3,
+      "question": "What colours does Ultralite S2 come in?",
+      "options": ["White only", "Grey only", "White or Grey", "16 colours"],
+      "correct_answer": "White or Grey",
+      "explanation": "Ultralite S2 is available in both white and grey — like most Mapei cementitious adhesives.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 4,
+      "question": "What colours does Adesilex P10 come in?",
+      "options": ["White only", "Grey only", "White or Grey", "Beige"],
+      "correct_answer": "White only",
+      "explanation": "Adesilex P10 is white only — the white powder is designed to enhance the colour of glass mosaics.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 5,
+      "question": "Mapesil AC is which type of product?",
+      "options": ["Tile adhesive", "Grout", "Silicone sealant", "Primer"],
+      "correct_answer": "Silicone sealant",
+      "explanation": "Mapesil AC is a one-component silicone sealant supplied in a cartridge.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 6,
+      "question": "Mapesil LM is which type of product?",
+      "options": ["Cementitious adhesive", "Epoxy grout", "Silicone sealant", "Polyurethane adhesive"],
+      "correct_answer": "Silicone sealant",
+      "explanation": "Mapesil LM is a one-component neutral silicone sealant.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 7,
+      "question": "Keracolor FF is which type of product?",
+      "options": ["Adhesive", "Grout", "Sealant", "Primer"],
+      "correct_answer": "Grout",
+      "explanation": "Keracolor FF is a cementitious grout — it fills the joints between tiles.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 8,
+      "question": "Granirapid is famous for being…",
+      "options": ["The cheapest adhesive", "Fast-setting", "White only", "A grout"],
+      "correct_answer": "Fast-setting",
+      "explanation": "Granirapid is Mapei's fast-setting two-component adhesive — that's why it carries the 'F' in its C2F S1 classification.",
+      "source_sheet": "Master / Distinctions"
+    },
+
+    {
+      "id": 9,
+      "question": "Which letter in a Mapei adhesive code means 'cementitious'?",
+      "options": ["C", "R", "D", "G"],
+      "correct_answer": "C",
+      "explanation": "C = Cementitious adhesive. R = Reaction resin (Keralastic). D = Dispersion. G = Grout.",
+      "source_sheet": "Code Decoder"
+    },
+
+    {
+      "id": 10,
+      "question": "Which letter in a Mapei adhesive code means 'reaction resin' (e.g. Keralastic)?",
+      "options": ["C", "R", "F", "T"],
+      "correct_answer": "R",
+      "explanation": "R = Reaction resin adhesive — used for Keralastic and Keralastic T (two-component polyurethanes).",
+      "source_sheet": "Code Decoder"
+    },
+
+    {
+      "id": 11,
+      "question": "What does the number '2' mean in a code like C2TE?",
+      "options": ["Two-component", "Improved performance", "Class 2 deformability", "Two colours"],
+      "correct_answer": "Improved performance",
+      "explanation": "1 = normal performance, 2 = improved performance per EN 12004.",
+      "source_sheet": "Code Decoder"
+    },
+
+    {
+      "id": 12,
+      "question": "What does the letter 'T' mean in a code like C2TE?",
+      "options": ["Thick-bed", "Slip-resistant (no vertical slip)", "Two-component", "Tile-on-tile"],
+      "correct_answer": "Slip-resistant (no vertical slip)",
+      "explanation": "T = slip-resistant — tiles don't slide down a wall while the adhesive is wet.",
+      "source_sheet": "Code Decoder"
+    },
+
+    {
+      "id": 13,
+      "question": "What does the letter 'E' mean in a code like C2TE?",
+      "options": ["Easy mix", "Extended open time", "Exterior only", "Epoxy"],
+      "correct_answer": "Extended open time",
+      "explanation": "E = extended open time (>30 minutes). Adhesives without E typically have only ~20 min open time.",
+      "source_sheet": "Code Decoder"
+    },
+
+    {
+      "id": 14,
+      "question": "How many components does Granirapid have?",
+      "options": ["One", "Two", "Three", "Four"],
+      "correct_answer": "Two",
+      "explanation": "Granirapid is two-component — Part A powder + Part B latex.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 15,
+      "question": "How many components does Keralastic have?",
+      "options": ["One", "Two", "Three", "Four"],
+      "correct_answer": "Two",
+      "explanation": "Keralastic is a two-component polyurethane: Component A (resin) + Component B (hardener).",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 16,
+      "question": "How many components does Mapesil AC have?",
+      "options": ["One", "Two", "Three", "Four"],
+      "correct_answer": "One",
+      "explanation": "Mapesil AC is one-component — comes ready-to-use in a cartridge, cures with humidity in the air.",
+      "source_sheet": "Master / Mix Prep"
+    },
+
+    {
+      "id": 17,
+      "question": "What is the cartridge size of Mapesil AC?",
+      "options": ["280 ml", "310 ml", "400 ml", "500 ml"],
+      "correct_answer": "310 ml",
+      "explanation": "Mapesil AC and Mapesil LM both come in 310 ml cartridges. Mapesil Z Plus is the smaller 280 ml.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 18,
+      "question": "What is the cartridge size of Mapesil Z Plus?",
+      "options": ["280 ml", "310 ml", "400 ml", "500 ml"],
+      "correct_answer": "280 ml",
+      "explanation": "Mapesil Z Plus comes in a 280 ml cartridge — slightly smaller than AC and LM (both 310 ml).",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 19,
+      "question": "Which Mapei product is known as the 'lightweight' adhesive line?",
+      "options": ["Granirapid", "Keraflex", "Ultralite", "Mapeset"],
+      "correct_answer": "Ultralite",
+      "explanation": "The Ultralite range (S1, S2, S2 Quick) are Mapei's lightweight adhesives — 15 kg bags with the same coverage as a 25 kg conventional bag.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 20,
+      "question": "Kerapoxy is what kind of chemistry?",
+      "options": ["Cementitious", "Epoxy", "Silicone", "Polyurethane"],
+      "correct_answer": "Epoxy",
+      "explanation": "Kerapoxy is a two-component epoxy resin — used as both grout and adhesive.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 21,
+      "question": "Kerabond Plus is a one-component _____ adhesive.",
+      "options": ["Polyurethane", "Cementitious", "Epoxy", "Silicone"],
+      "correct_answer": "Cementitious",
+      "explanation": "Kerabond Plus is a one-component cementitious adhesive (C2E classification).",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 22,
+      "question": "What is the standard storage / shelf-life of most Mapei cementitious adhesives in this range?",
+      "options": ["6 months", "12 months", "18 months", "24 months"],
+      "correct_answer": "12 months",
+      "explanation": "Cementitious adhesives store 12 months. Reaction-resin products (Keralastic, Kerapoxy) and Mapesil AC store 24 months.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 23,
+      "question": "Which standard sets the rules for cementitious tile adhesive classification (C1, C2, etc.)?",
+      "options": ["ISO 9001", "EN 12004 / ISO 13007", "ASTM C1248", "EN 15651"],
+      "correct_answer": "EN 12004 / ISO 13007",
+      "explanation": "EN 12004 / ISO 13007 is the European/international standard for tile adhesive classification. EN 15651 is for sealants. ASTM C1248 is the non-staining test for silicones.",
+      "source_sheet": "Code Decoder"
+    },
+
+    {
+      "id": 24,
+      "question": "What does 'EC1 Plus' on a Mapei product label refer to?",
+      "options": ["Electrical conductivity rating", "Very low VOC emission certification (EMICODE)", "Exterior class 1", "Energy-class 1"],
+      "correct_answer": "Very low VOC emission certification (EMICODE)",
+      "explanation": "EMICODE EC1 Plus = very low emission of volatile organic compounds — the highest indoor air-quality rating. Almost all Mapei products in this range carry it.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 25,
+      "question": "What is the minimum application temperature for most Mapei cementitious adhesives?",
+      "options": ["0 °C", "+5 °C", "+10 °C", "+12 °C"],
+      "correct_answer": "+5 °C",
+      "explanation": "Most cementitious adhesives apply at +5 °C minimum. Keralastic needs +10 °C minimum, Kerapoxy needs +12 °C minimum.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 26,
+      "question": "Granirapid is mixed by pouring the powder into…",
+      "options": ["Clean water", "Latex (Part B)", "Isolastic", "Fugolastic"],
+      "correct_answer": "Latex (Part B)",
+      "explanation": "Granirapid uses no water — pour the powder (Part A) into the latex (Part B) and mix mechanically.",
+      "source_sheet": "Mix Prep"
+    },
+
+    {
+      "id": 27,
+      "question": "After mixing a cementitious adhesive, what should you do BEFORE applying it?",
+      "options": ["Apply immediately", "Let it rest for ~5 minutes, then re-mix", "Wait 30 minutes", "Add more water"],
+      "correct_answer": "Let it rest for ~5 minutes, then re-mix",
+      "explanation": "Standard Mapei procedure: mix → rest 5 min → re-mix. The rest period lets the polymers fully activate.",
+      "source_sheet": "Mix Prep"
+    },
+
+    {
+      "id": 28,
+      "question": "Keracolor FF is available in how many colours from the MAPEI range?",
+      "options": ["4", "10", "16", "40"],
+      "correct_answer": "16",
+      "explanation": "Keracolor FF is available in 16 colours from the MAPEI range. Mapesil AC has the largest palette at 40 + transparent.",
+      "source_sheet": "Master"
+    },
+
+    {
+      "id": 29,
+      "question": "Which Mapei product in this range is described as a 'CO2-fully-offset' adhesive?",
+      "options": ["Granirapid", "Keraflex Maxi S1 Zero", "Ultralite S1", "Mapeset"],
+      "correct_answer": "Keraflex Maxi S1 Zero",
+      "explanation": "The 'Zero' in Keraflex Maxi S1 Zero refers to its CO2-fully-offset status — Mapei's eco-conscious version of Keraflex Maxi.",
+      "source_sheet": "Distinctions"
+    },
+
+    {
+      "id": 30,
+      "question": "Which symbol in the workbook means a use is EXPLICITLY FORBIDDEN by the TDS?",
+      "options": ["✓", "✗", "—", "?"],
+      "correct_answer": "✗",
+      "explanation": "✓ = supported, ✗ = explicitly forbidden, '—' = not mentioned (use cautiously). Standard Mapei TDS-matrix convention.",
+      "source_sheet": "README / Where to Use"
+    }
+
+  ]
+}
