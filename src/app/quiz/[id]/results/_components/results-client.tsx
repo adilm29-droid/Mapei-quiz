@@ -139,7 +139,15 @@ export function ResultsClient({ quizId, attemptId }: { quizId: string; attemptId
           transition={{ type: 'spring', stiffness: 240, damping: 22 }}
           className="flex flex-col items-center"
         >
-          <p className="mb-3 text-micro uppercase tracking-[0.45em] text-whitex-faint">Your score</p>
+          <p className="mb-3 text-micro uppercase tracking-[0.45em] text-whitex-faint">
+            {result.attempt_kind === 'practice' ? '🎯 Practice score' : 'Your score'}
+          </p>
+          {result.attempt_kind === 'practice' ? (
+            <p className="mb-2 text-caption text-whitex-muted">
+              This was a practice attempt — your leaderboard score and XP are
+              unchanged.
+            </p>
+          ) : null}
           <div className={`text-display-xl font-display tabular text-gradient-${grad} bg-clip-text text-transparent`}>
             <NumberTicker value={result.finalScore} duration={1500} />
           </div>
