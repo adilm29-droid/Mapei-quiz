@@ -42,7 +42,8 @@ export async function GET(request: Request) {
       .from('attempts')
       .select('id', { count: 'exact', head: true })
       .eq('quiz_id', q.id)
-      .eq('is_complete', true)
+      .eq('is_leaderboard_attempt', true)
+      .is('deleted_at', null)
 
     if ((count ?? 0) < 5) continue
 
@@ -62,7 +63,8 @@ export async function GET(request: Request) {
       .from('attempts')
       .select('final_score, user_id, users!inner(username, first_name, last_name)')
       .eq('quiz_id', q.id)
-      .eq('is_complete', true)
+      .eq('is_leaderboard_attempt', true)
+      .is('deleted_at', null)
       .order('final_score', { ascending: false })
       .order('submitted_at', { ascending: true })
       .limit(3)
@@ -80,7 +82,8 @@ export async function GET(request: Request) {
       .from('attempts')
       .select('user_id, final_score, submitted_at')
       .eq('quiz_id', q.id)
-      .eq('is_complete', true)
+      .eq('is_leaderboard_attempt', true)
+      .is('deleted_at', null)
       .order('final_score', { ascending: false })
       .order('submitted_at', { ascending: true })
     const rankByUser: Record<string, number> = {}

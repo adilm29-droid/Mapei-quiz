@@ -7,7 +7,7 @@ import { computeXpAward } from '@/lib/xp'
 import { evaluateBadges } from '@/lib/badges'
 import { originalLetterToSlot } from '@/lib/quiz-engine'
 import { getLeaderboardAttempt } from '@/lib/quiz/attempt-gate'
-import { gatherFacts, grantAchievements } from '@/lib/achievements/grant'
+import { gatherFacts, grantAchievements, bumpPracticeCounter } from '@/lib/achievements/grant'
 import type {
   AnswerLetter,
   AnswersMap,
@@ -139,6 +139,7 @@ export async function POST(
       time_taken_seconds: timeTakenSeconds,
       ip_address: ip,
       user_agent: ua,
+      // xp_awarded stays 0 for practice; backfilled later for leaderboard
     })
     .eq('id', attempt.id)
   if (updateAttemptErr) {
@@ -146,13 +147,101 @@ export async function POST(
     return NextResponse.json({ error: updateAttemptErr.message }, { status: 500 })
   }
 
-  // 6. Fetch user for XP + streak math
+  // 6. Fetch user — needed by both the leaderboard and practice paths
+  //    (practice still surfaces the user's current streak in the result UI).
   const { data: user, error: uErr } = await supabase
     .from('users')
-    .select('id, xp, level, title, current_streak, longest_streak, streak_freezes, last_quiz_date')
+    .select(
+      'id, xp, level, title, current_streak, longest_streak, streak_freezes, last_quiz_date, email, first_name, last_name, username',
+    )
     .eq('id', session.userId)
     .maybeSingle()
   if (uErr || !user) return NextResponse.json({ error: 'User row missing' }, { status: 500 })
+
+  // Build the per-question breakdown once — both paths need it.
+  const optionOrders = attempt.option_orders as OptionOrdersMap
+  void optionOrders
+  const buildPerQuestion = (): AttemptResultForClient['perQuestion'] =>
+    questionsInOrder.map(q => {
+      const yourLetter: AnswerLetter | null = (answers[q.id] as AnswerLetter) ?? null
+      const lookup = (l: AnswerLetter) =>
+        l === 'A' ? q.option_a :
+        l === 'B' ? q.option_b :
+        l === 'C' ? q.option_c :
+        q.option_d
+      return {
+        questionId: q.id,
+        question_text: q.question_text,
+        yourAnswer: yourLetter,
+        yourAnswerText: yourLetter ? lookup(yourLetter) : null,
+        correctAnswer: q.correct_answer,
+        correctAnswerText: lookup(q.correct_answer),
+        isCorrect: yourLetter === q.correct_answer,
+        explanation: q.explanation,
+      }
+    })
+
+  // ── Practice path — per CLAUDE_CODE_PROMPT.md §4 + §11 ─────────────
+  // Practice attempts:
+  //   - do NOT touch users.xp / streak / level / title
+  //   - do NOT trigger legacy badge eval (kept dormant on this path)
+  //   - DO bump practice_counters (counts + UAE date)
+  //   - DO re-evaluate practice-count + Daily Driver / Repeat Offender
+  //     achievements via gatherFacts(isLeaderboardAttempt=false)
+  //   - do NOT fire engagement emails (no completion email, no
+  //     score_beaten — those are leaderboard-scoped notifications)
+  if (!isLeaderboard) {
+    try {
+      await bumpPracticeCounter(supabase, session.userId, attempt.quiz_id)
+    } catch (e) {
+      console.error('[attempts/submit] practice counter bump:', e)
+    }
+    let practiceAchievements: AttemptResultForClient['newAchievements'] = []
+    try {
+      const facts = await gatherFacts(supabase, session.userId, attempt.quiz_id, {
+        isLeaderboardAttempt: false,
+        scorePercent: breakdown.percent,
+      })
+      const granted = await grantAchievements(supabase, session.userId, facts)
+      practiceAchievements = granted.map(g => ({
+        id: g.id,
+        code: g.code,
+        scope: g.scope,
+        name: g.name,
+        description: g.description,
+        icon: g.icon,
+        tier_color: g.tier_color,
+      }))
+    } catch (e) {
+      console.error('[attempts/submit] practice achievements:', e)
+    }
+
+    const payload: AttemptResultForClient = {
+      attemptId: attempt.id,
+      totalQuestions: breakdown.totalQuestions,
+      finalScore: breakdown.finalScore,
+      percent: breakdown.percent,
+      perQuestion: buildPerQuestion(),
+      xp: {
+        delta: 0,
+        newXp: user.xp ?? 0,
+        leveledUp: false,
+        oldLevel: user.level ?? 1,
+        newLevel: user.level ?? 1,
+        newTitle: user.title ?? '',
+      },
+      streak: {
+        current: user.current_streak ?? 0,
+        longest: user.longest_streak ?? 0,
+        hitMilestone: null,
+        freezeUsed: false,
+      },
+      newBadges: [],
+      newAchievements: practiceAchievements,
+      attempt_kind: 'practice',
+    }
+    return NextResponse.json(payload)
+  }
 
   // 7. Apply streak (UAE-time aware)
   const streakOutcome = applyStreak({
@@ -162,12 +251,14 @@ export async function POST(
     last_quiz_date: user.last_quiz_date ?? null,
   })
 
-  // 8. First-mover bonus — was this the first completion of this quiz?
+  // 8. First-mover bonus — was this the first LEADERBOARD completion?
+  //    Per spec §4: only attempt-1 leaderboard rows count as "completion".
   const { count: priorCompletes } = await supabase
     .from('attempts')
     .select('id', { count: 'exact', head: true })
     .eq('quiz_id', attempt.quiz_id)
-    .eq('is_complete', true)
+    .eq('is_leaderboard_attempt', true)
+    .is('deleted_at', null)
     .neq('id', attempt.id)
   const isFirstMover = (priorCompletes ?? 0) === 0
 
@@ -270,29 +361,9 @@ export async function POST(
     console.error('[attempts/submit] achievements engine error (non-fatal):', e)
   }
 
-  // 12. Build per-question breakdown for the review screen (translate stored
-  //     original letters back to display slots if the UI wants them).
-  const optionOrders = attempt.option_orders as OptionOrdersMap
-  const perQuestion: AttemptResultForClient['perQuestion'] = questionsInOrder.map(q => {
-    const yourLetter: AnswerLetter | null = (answers[q.id] as AnswerLetter) ?? null
-    const lookup = (l: AnswerLetter) => {
-      if (l === 'A') return q.option_a
-      if (l === 'B') return q.option_b
-      if (l === 'C') return q.option_c
-      return q.option_d
-    }
-    void optionOrders
-    return {
-      questionId: q.id,
-      question_text: q.question_text,
-      yourAnswer: yourLetter,
-      yourAnswerText: yourLetter ? lookup(yourLetter) : null,
-      correctAnswer: q.correct_answer,
-      correctAnswerText: lookup(q.correct_answer),
-      isCorrect: yourLetter === q.correct_answer,
-      explanation: q.explanation,
-    }
-  })
+  // 12. Per-question breakdown for the review screen — uses the helper
+  //     defined alongside the practice path so both share one mapping.
+  const perQuestion = buildPerQuestion()
 
   const payload: AttemptResultForClient = {
     attemptId: attempt.id,
@@ -384,11 +455,14 @@ async function fireEngagementEmails(args: {
 
   // Compute the user's current rank on this quiz (best-score-so-far)
   // — the leaderboard might not be visible yet, but we can show "rank so far"
+  // LB-only: practice attempts are not on the leaderboard, so they don't
+  // affect rank-so-far or trigger score_beaten notifications.
   const { data: bestScores } = await supabase
     .from('attempts')
     .select('user_id, final_score, submitted_at')
     .eq('quiz_id', attempt.quiz_id)
-    .eq('is_complete', true)
+    .eq('is_leaderboard_attempt', true)
+    .is('deleted_at', null)
     .order('final_score', { ascending: false })
     .order('submitted_at', { ascending: true })
 
@@ -449,7 +523,8 @@ async function fireEngagementEmails(args: {
     .select('final_score')
     .eq('user_id', userId)
     .eq('quiz_id', attempt.quiz_id)
-    .eq('is_complete', true)
+    .eq('is_leaderboard_attempt', true)
+    .is('deleted_at', null)
     .neq('id', attempt.id)
   const priorBestOfMine = (priorOfThisUser ?? []).reduce(
     (m: number, a: any) => Math.max(m, a.final_score ?? 0),

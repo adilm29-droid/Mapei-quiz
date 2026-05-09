@@ -106,12 +106,15 @@ export default async function HomePage() {
       podiumQuizId = prior?.id ?? null
     }
 
-    // Count completed attempts for the latest quiz (used for placeholder copy)
+    // Count leaderboard attempts for the latest quiz (used for placeholder
+    // copy "X of 5 attempts so far"). Practice attempts don't count toward
+    // the reveal threshold per spec §4.
     const { count: cc } = await supabase
       .from('attempts')
       .select('id', { count: 'exact', head: true })
       .eq('quiz_id', latestQuiz.id)
-      .eq('is_complete', true)
+      .eq('is_leaderboard_attempt', true)
+      .is('deleted_at', null)
     attemptsSoFar = cc ?? 0
   }
 
@@ -122,7 +125,8 @@ export default async function HomePage() {
         'final_score, submitted_at, user_id, users!inner(id, username, first_name, last_name)',
       )
       .eq('quiz_id', podiumQuizId)
-      .eq('is_complete', true)
+      .eq('is_leaderboard_attempt', true)
+      .is('deleted_at', null)
       .order('final_score', { ascending: false })
       .order('submitted_at', { ascending: true })
       .limit(3)

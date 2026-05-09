@@ -55,7 +55,8 @@ export default async function LeaderboardPage({
       .from('attempts')
       .select('user_id, final_score, submitted_at, users!inner(id, username, first_name, last_name, title)')
       .eq('quiz_id', latestQuiz.id)
-      .eq('is_complete', true)
+      .eq('is_leaderboard_attempt', true)
+      .is('deleted_at', null)
       .order('final_score', { ascending: false })
       .order('submitted_at', { ascending: true })
 
