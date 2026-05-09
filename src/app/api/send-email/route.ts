@@ -28,6 +28,7 @@ import AccessRequestResolved from '@/emails/AccessRequestResolved'
 import QuizCompleted from '@/emails/QuizCompleted'
 import Top3Finisher from '@/emails/Top3Finisher'
 import ScoreBeaten from '@/emails/ScoreBeaten'
+import Digest from '@/emails/Digest'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -268,6 +269,22 @@ export async function POST(request) {
             final_score: data.final_score,
             max_score: data.max_score,
             leaderboard_url: data.leaderboard_url,
+          }),
+        )
+        break
+      }
+
+      case 'leaderboard_digest': {
+        to = data.email
+        subject = `📊 Lapiz Blue Quiz · ${data.date_uae}`
+        html = await render(
+          Digest({
+            first_name: data.first_name,
+            date_uae: data.date_uae,
+            quizzes: data.quizzes ?? [],
+            top_xp_today: data.top_xp_today ?? [],
+            leaderboard_url: data.leaderboard_url,
+            home_url: data.home_url,
           }),
         )
         break
