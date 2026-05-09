@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { Avatar } from '@/components/avatar/avatar'
 import { Badge } from '@/components/ui/badge'
 import { formatUaeDateTime, formatDuration } from '@/lib/utils/timezone'
+import { AvatarUploader } from './_components/avatar-uploader'
 
 export const dynamic = 'force-dynamic'
 
@@ -147,6 +148,8 @@ export default async function AdminUserOverview({
         <Stat label="Practice Attempts" value={totalPractice} />
         <Stat label="Achievements" value={achievements.length} />
       </section>
+
+      <AvatarUploader userId={user.id} currentUrl={user.avatar_url} />
 
       <section>
         <h2 className="mb-3 text-h3 font-semibold text-white">
