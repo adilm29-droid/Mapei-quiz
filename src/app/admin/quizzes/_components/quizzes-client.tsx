@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Upload, Eye, EyeOff, Pencil } from 'lucide-react'
+import { Upload, Eye, EyeOff, Pencil, BarChart3 } from 'lucide-react'
 import { GradientButton } from '@/components/ui/gradient-button'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -93,6 +93,13 @@ export function QuizzesClient({ initial }: { initial: QuizRow[] }) {
                   </td>
                   <td className="px-5 py-3 text-right">
                     <div className="inline-flex items-center gap-1">
+                      <Link
+                        href={`/admin/quizzes/${q.id}/insights`}
+                        className="inline-flex items-center rounded-md px-2 py-1 text-micro text-whitex-muted hover:bg-midnight-line hover:text-white"
+                      >
+                        <BarChart3 className="mr-1 h-3 w-3" />
+                        Insights
+                      </Link>
                       <Link
                         href={`/admin/quizzes/${q.id}/edit`}
                         className="inline-flex items-center rounded-md px-2 py-1 text-micro text-whitex-muted hover:bg-midnight-line hover:text-white"
