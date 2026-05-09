@@ -47,7 +47,7 @@ export function evaluateAchievements(facts: AchievementFacts): string[] {
   return earned
 }
 
-function qualifies(t: Threshold, f: AchievementFacts): boolean {
+export function qualifies(t: Threshold, f: AchievementFacts): boolean {
   switch (t.type) {
     case 'first_completion':
       // Triggered when the user has at least one completed leaderboard attempt

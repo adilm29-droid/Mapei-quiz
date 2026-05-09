@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowLeft, Download } from 'lucide-react'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { formatUaeDateTime, formatDuration } from '@/lib/utils/timezone'
+import { ResetAttemptButton } from './_components/reset-attempt-button'
 
 export const dynamic = 'force-dynamic'
 
@@ -148,6 +149,12 @@ export default async function AdminAttemptDetail({
           >
             User-facing PDF
           </a>
+          <ResetAttemptButton
+            userId={userId}
+            quizId={attempt.quiz_id}
+            isLeaderboard={!!attempt.is_leaderboard_attempt}
+            alreadyDeleted={!!attempt.deleted_at}
+          />
         </section>
 
         <section className="space-y-3">
