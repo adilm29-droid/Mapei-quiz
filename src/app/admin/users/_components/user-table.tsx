@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { UserRowActions } from './user-row-actions'
 import type { AdminUserRow } from './types'
@@ -77,7 +78,14 @@ export function UserTable({
                     : 'border-b border-midnight-line/60 transition-colors hover:bg-midnight-line/40'
                 }
               >
-                <td className="px-5 py-3 text-body font-medium text-whitex-soft">{fullName(u)}</td>
+                <td className="px-5 py-3 text-body font-medium text-whitex-soft">
+                  <Link
+                    href={`/admin/users/${u.id}`}
+                    className="hover:text-white hover:underline"
+                  >
+                    {fullName(u)}
+                  </Link>
+                </td>
                 <td className="px-5 py-3 font-mono text-caption text-whitex-soft">@{u.username}</td>
                 <td className="px-5 py-3 text-caption text-whitex-muted">{u.email}</td>
                 <td className="px-5 py-3"><Badge tone={ROLE_TONE[u.role]}>{u.role}</Badge></td>
