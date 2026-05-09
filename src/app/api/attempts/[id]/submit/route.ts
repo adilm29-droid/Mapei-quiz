@@ -6,6 +6,8 @@ import { applyStreak } from '@/lib/streaks'
 import { computeXpAward } from '@/lib/xp'
 import { evaluateBadges } from '@/lib/badges'
 import { originalLetterToSlot } from '@/lib/quiz-engine'
+import { getLeaderboardAttempt } from '@/lib/quiz/attempt-gate'
+import { gatherFacts, grantAchievements } from '@/lib/achievements/grant'
 import type {
   AnswerLetter,
   AnswersMap,
@@ -37,6 +39,21 @@ export async function POST(
   const session = guard
   const { id } = await context.params
 
+  // Optional submit body — currently the only field is `claim`, which the
+  // client passes when it believed at start time that this attempt would
+  // become the leaderboard attempt. If the gate disagrees at submit time
+  // (parallel session got there first), we return 409 so the client can
+  // re-route the user to a "this counted as practice" results screen.
+  let claim: 'leaderboard' | 'practice' | null = null
+  try {
+    const body = await _request.clone().json().catch(() => null)
+    if (body && (body.claim === 'leaderboard' || body.claim === 'practice')) {
+      claim = body.claim
+    }
+  } catch {
+    /* no body — that's fine, claim stays null */
+  }
+
   const supabase = getSupabaseAdmin()
 
   // 1. Fetch the attempt
@@ -57,6 +74,24 @@ export async function POST(
 
   if (attempt.is_incomplete) {
     return NextResponse.json({ error: 'This attempt expired and cannot be submitted' }, { status: 410 })
+  }
+
+  // ── Attempt-1 / leaderboard gate per CLAUDE_CODE_PROMPT.md §4 ────────
+  // Decide whether this submit becomes the user's leaderboard attempt.
+  // - No existing leaderboard attempt → this submit becomes it.
+  // - Existing LB attempt is THIS attempt → idempotent re-submit (covered above).
+  // - Existing LB attempt is a different attempt → this is a practice run.
+  const existingLb = await getLeaderboardAttempt(supabase, session.userId, attempt.quiz_id)
+  const isLeaderboard = !existingLb || existingLb.id === attempt.id
+
+  // Race detection: client started this expecting to be the leaderboard
+  // attempt, but a parallel tab beat them to the slot. Reject before
+  // mutating state.
+  if (claim === 'leaderboard' && !isLeaderboard) {
+    return NextResponse.json(
+      { error: 'leaderboard_attempt_exists' },
+      { status: 409 },
+    )
   }
 
   // 3. Fetch all questions for the quiz (single round-trip)
@@ -81,14 +116,29 @@ export async function POST(
   const answers: AnswersMap = (attempt.answers ?? {}) as AnswersMap
   const breakdown = computeScore(questionsInOrder, answers)
 
-  // 5. Persist final_score + flags
+  // 5. Persist final_score + flags. xp_awarded gets backfilled in a
+  //    second UPDATE after XP is computed below — kept separate to avoid
+  //    re-ordering the rest of the orchestration.
   const submittedAt = new Date().toISOString()
+  const startedAtMs = new Date(attempt.started_at).getTime()
+  const submittedAtMs = new Date(submittedAt).getTime()
+  const timeTakenSeconds = Math.max(0, Math.round((submittedAtMs - startedAtMs) / 1000))
+
+  // Best-effort capture of client IP + UA for the admin audit PDF.
+  const fwd = _request.headers.get('x-forwarded-for')
+  const ip = fwd ? fwd.split(',')[0]!.trim() : (_request.headers.get('x-real-ip') ?? null)
+  const ua = _request.headers.get('user-agent') ?? null
+
   const { error: updateAttemptErr } = await supabase
     .from('attempts')
     .update({
       final_score: breakdown.finalScore,
       is_complete: true,
       submitted_at: submittedAt,
+      is_leaderboard_attempt: isLeaderboard,
+      time_taken_seconds: timeTakenSeconds,
+      ip_address: ip,
+      user_agent: ua,
     })
     .eq('id', attempt.id)
   if (updateAttemptErr) {
@@ -146,6 +196,13 @@ export async function POST(
     .eq('id', session.userId)
   if (userUpdateErr) console.error('[attempts/submit] user update:', userUpdateErr)
 
+  // 10b. Backfill xp_awarded on the attempt row now that XP delta is known.
+  const { error: xpAwardErr } = await supabase
+    .from('attempts')
+    .update({ xp_awarded: xp.delta })
+    .eq('id', attempt.id)
+  if (xpAwardErr) console.error('[attempts/submit] xp_awarded backfill:', xpAwardErr)
+
   // 11. Badge evaluation
   const { data: priorAttempts } = await supabase
     .from('attempts')
@@ -189,6 +246,29 @@ export async function POST(
       ? { final_score: previousAttemptForQuiz.final_score ?? 0 }
       : null,
   })
+
+  // 11b. New (v2) achievements engine — runs alongside legacy badges.
+  //      Pure evaluator + idempotent grant. Errors here do not fail the
+  //      submit; the legacy badges payload still ships.
+  let newAchievementsForClient: AttemptResultForClient['newAchievements'] = []
+  try {
+    const facts = await gatherFacts(supabase, session.userId, attempt.quiz_id, {
+      isLeaderboardAttempt: isLeaderboard,
+      scorePercent: breakdown.percent,
+    })
+    const granted = await grantAchievements(supabase, session.userId, facts)
+    newAchievementsForClient = granted.map(g => ({
+      id: g.id,
+      code: g.code,
+      scope: g.scope,
+      name: g.name,
+      description: g.description,
+      icon: g.icon,
+      tier_color: g.tier_color,
+    }))
+  } catch (e) {
+    console.error('[attempts/submit] achievements engine error (non-fatal):', e)
+  }
 
   // 12. Build per-question breakdown for the review screen (translate stored
   //     original letters back to display slots if the UI wants them).
@@ -240,6 +320,8 @@ export async function POST(
       description: b.description,
       gradient: b.gradient,
     })),
+    newAchievements: newAchievementsForClient,
+    attempt_kind: isLeaderboard ? 'leaderboard' : 'practice',
   }
 
   // 13. Fire engagement emails (fire-and-forget — don't block the response)
@@ -344,6 +426,7 @@ async function fireEngagementEmails(args: {
           new_badges_count: newBadgesCount,
           current_streak: streakCurrent,
           review_url: `${origin}/quiz/${attempt.quiz_id}/review?attempt=${attempt.id}`,
+          pdf_url: `${origin}/api/quiz/${attempt.id}/pdf?variant=user`,
         },
       }),
     }).catch(() => {})
@@ -478,6 +561,8 @@ async function buildCachedResult(supabase: any, attempt: any): Promise<AttemptRe
     xp: { delta: 0, newXp: 0, leveledUp: false, oldLevel: 1, newLevel: 1, newTitle: '' },
     streak: { current: 0, longest: 0, hitMilestone: null, freezeUsed: false },
     newBadges: [],
+    newAchievements: [],
+    attempt_kind: attempt.is_leaderboard_attempt ? 'leaderboard' : 'practice',
   }
 }
 

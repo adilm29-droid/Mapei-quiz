@@ -251,6 +251,7 @@ export async function POST(request) {
             new_badges_count: data.new_badges_count,
             current_streak: data.current_streak,
             review_url: data.review_url,
+            pdf_url: data.pdf_url ?? null,
           }),
         )
         break

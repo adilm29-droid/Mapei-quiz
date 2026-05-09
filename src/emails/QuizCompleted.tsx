@@ -15,6 +15,9 @@ interface QuizCompletedProps {
   new_badges_count: number
   current_streak: number
   review_url: string
+  /** Permalink to /api/quiz/{attempt_id}/pdf?variant=user. Renders a
+   *  secondary "Download your report" button. Missing → no button. */
+  pdf_url?: string | null
 }
 
 export default function QuizCompleted({
@@ -29,6 +32,7 @@ export default function QuizCompleted({
   new_badges_count,
   current_streak,
   review_url,
+  pdf_url,
 }: QuizCompletedProps) {
   const grad: EmailGradient =
     percent === 100 ? 'champion' : percent >= 70 ? 'spring' : percent >= 50 ? 'sunset' : 'ember'
@@ -95,6 +99,26 @@ export default function QuizCompleted({
       <GradientButton href={review_url} gradient={grad}>
         Review your answers →
       </GradientButton>
+      {pdf_url ? (
+        <div style={{ marginTop: 12 }}>
+          <a
+            href={pdf_url}
+            style={{
+              display: 'inline-block',
+              padding: '10px 18px',
+              borderRadius: 10,
+              border: '1px solid rgba(255,255,255,0.18)',
+              color: '#cbd5e1',
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: 'none',
+              letterSpacing: 0.3,
+            }}
+          >
+            ⬇ Download your report (PDF)
+          </a>
+        </div>
+      ) : null}
       <PMuted>
         Leaderboard goes live once 5 staff complete this quiz and 24 hours have passed. We'll
         email you the moment it does.

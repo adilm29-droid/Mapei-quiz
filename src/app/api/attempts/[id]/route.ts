@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireSession } from '@/lib/auth-guard'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { questionToDisplay } from '@/lib/quiz-engine'
+import { isLeaderboardAttempt } from '@/lib/quiz/attempt-gate'
 import type { AttemptStateForClient, OptionOrdersMap, QuestionRow, AnswerLetter } from '@/lib/types'
 
 export const runtime = 'nodejs'
@@ -77,6 +78,11 @@ export async function GET(
     if (slotIdx >= 0) previouslySelected = LETTERS[slotIdx]
   }
 
+  const attempt_kind: 'leaderboard' | 'practice' =
+    (await isLeaderboardAttempt(supabase, session.userId, attempt.quiz_id))
+      ? 'leaderboard'
+      : 'practice'
+
   const payload: AttemptStateForClient = {
     attemptId: attempt.id,
     quizId: attempt.quiz_id,
@@ -87,6 +93,7 @@ export async function GET(
     current: display!,
     previouslySelected,
     answeredQuestionIds: Object.keys(attempt.answers ?? {}),
+    attempt_kind,
   }
   return NextResponse.json(payload)
 }

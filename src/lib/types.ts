@@ -230,6 +230,13 @@ export interface AttemptStateForClient {
   previouslySelected: 'A' | 'B' | 'C' | 'D' | null
   /** Which question_ids the user has already answered */
   answeredQuestionIds: string[]
+  /**
+   * Whether this attempt — when submitted — will be the user's
+   * leaderboard attempt for the quiz, or a practice attempt that
+   * doesn't count. Per CLAUDE_CODE_PROMPT.md §4. Source of truth at
+   * start time is lib/quiz/attempt-gate.ts; the submit route re-checks.
+   */
+  attempt_kind: 'leaderboard' | 'practice'
 }
 
 export interface AttemptResultForClient {
@@ -262,4 +269,20 @@ export interface AttemptResultForClient {
     freezeUsed: boolean
   }
   newBadges: { code: string; name: string; description: string; gradient: string }[]
+  /**
+   * Achievements unlocked by this submit under the new (v2) catalog —
+   * runs in parallel with the legacy `newBadges` for now. The results
+   * screen can render both side-by-side or pick one.
+   */
+  newAchievements: {
+    id: string
+    code: string
+    scope: 'global' | 'per_quiz'
+    name: string
+    description: string
+    icon: string
+    tier_color: string
+  }[]
+  /** Same source as the start route's attempt_kind, after the submit-time gate re-check. */
+  attempt_kind: 'leaderboard' | 'practice'
 }

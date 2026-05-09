@@ -8,6 +8,7 @@ import {
   QUIZ_TIME_LIMIT_MS,
   FREE_ATTEMPT_CAP,
 } from '@/lib/quiz-engine'
+import { isLeaderboardAttempt } from '@/lib/quiz/attempt-gate'
 import type { OptionOrdersMap, QuestionRow, AttemptStateForClient } from '@/lib/types'
 
 export const runtime = 'nodejs'
@@ -60,7 +61,10 @@ export async function POST(
     .maybeSingle()
 
   if (active) {
-    return NextResponse.json(await buildState(supabase, active))
+    const kind = (await isLeaderboardAttempt(supabase, session.userId, quizId))
+      ? 'leaderboard'
+      : 'practice'
+    return NextResponse.json(await buildState(supabase, active, kind))
   }
 
   // 3. Sweep this user's expired attempts
@@ -137,11 +141,23 @@ export async function POST(
     return NextResponse.json({ error: insErr?.message || 'Could not start attempt' }, { status: 500 })
   }
 
-  return NextResponse.json(await buildState(supabase, created))
+  // Determine attempt_kind. The gate is consulted BEFORE we set any flag on
+  // the row; we don't write `is_leaderboard_attempt` until submit. The kind
+  // returned here is the client's expected outcome — submit re-checks and
+  // returns 409 if a parallel session beat us to leaderboard slot.
+  const kind = (await isLeaderboardAttempt(supabase, session.userId, quizId))
+    ? 'leaderboard'
+    : 'practice'
+
+  return NextResponse.json(await buildState(supabase, created, kind))
 }
 
 /** Builds the full client-state payload for an attempt row. */
-async function buildState(supabase: any, attempt: any): Promise<AttemptStateForClient> {
+async function buildState(
+  supabase: any,
+  attempt: any,
+  attempt_kind: 'leaderboard' | 'practice',
+): Promise<AttemptStateForClient> {
   const order: string[] = attempt.question_order
   const idx = Math.max(0, Math.min(order.length - 1, attempt.current_question_index ?? 0))
   const currentQuestionId = order[idx]
@@ -181,5 +197,6 @@ async function buildState(supabase: any, attempt: any): Promise<AttemptStateForC
     current: display!,
     previouslySelected,
     answeredQuestionIds: Object.keys(attempt.answers ?? {}),
+    attempt_kind,
   }
 }
