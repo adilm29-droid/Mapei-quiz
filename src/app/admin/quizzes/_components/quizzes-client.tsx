@@ -1,9 +1,10 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Upload, Eye, EyeOff } from 'lucide-react'
+import { Upload, Eye, EyeOff, Pencil } from 'lucide-react'
 import { GradientButton } from '@/components/ui/gradient-button'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -91,24 +92,33 @@ export function QuizzesClient({ initial }: { initial: QuizRow[] }) {
                     {q.max_score ?? '—'}
                   </td>
                   <td className="px-5 py-3 text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleUnlock(q)}
-                      className="text-whitex-muted hover:bg-midnight-line hover:text-white"
-                    >
-                      {q.is_unlocked ? (
-                        <>
-                          <EyeOff className="mr-1.5 h-3.5 w-3.5" />
-                          Lock
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="mr-1.5 h-3.5 w-3.5" />
-                          Unlock
-                        </>
-                      )}
-                    </Button>
+                    <div className="inline-flex items-center gap-1">
+                      <Link
+                        href={`/admin/quizzes/${q.id}/edit`}
+                        className="inline-flex items-center rounded-md px-2 py-1 text-micro text-whitex-muted hover:bg-midnight-line hover:text-white"
+                      >
+                        <Pencil className="mr-1 h-3 w-3" />
+                        Edit
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleUnlock(q)}
+                        className="text-whitex-muted hover:bg-midnight-line hover:text-white"
+                      >
+                        {q.is_unlocked ? (
+                          <>
+                            <EyeOff className="mr-1.5 h-3.5 w-3.5" />
+                            Lock
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="mr-1.5 h-3.5 w-3.5" />
+                            Unlock
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
