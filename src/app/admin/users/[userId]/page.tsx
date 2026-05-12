@@ -4,6 +4,7 @@ import { ArrowLeft, Download } from 'lucide-react'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { Avatar } from '@/components/avatar/avatar'
 import { AvatarUploader } from './_components/avatar-uploader'
+import { AVATAR_GALLERY } from '@/lib/avatar-gallery'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,6 +32,22 @@ export default async function AdminUserOverview({
     .maybeSingle()
   const user = rawUser as any
   if (!user) notFound()
+
+  // Build the gallery of previously-uploaded avatars (across all users).
+  // The picker on the page combines this with the static /public/avatars
+  // set so admins can re-use an image instead of re-uploading.
+  const { data: rawAvatars } = await supabase
+    .from('users')
+    .select('avatar_url')
+    .not('avatar_url', 'is', null)
+  const uploadedSet = new Set<string>(
+    (rawAvatars ?? [])
+      .map((r: any) => r.avatar_url as string)
+      .filter(Boolean)
+      // Static gallery is shown separately, don't double-list it
+      .filter(u => !(AVATAR_GALLERY as readonly string[]).includes(u)),
+  )
+  const uploadedAvatars = Array.from(uploadedSet)
 
   const { data: rawAttempts } = await supabase
     .from('attempts')
@@ -86,7 +103,12 @@ export default async function AdminUserOverview({
 
       <section>
         <h2 className="mb-2 text-h3 font-semibold text-white">Profile picture</h2>
-        <AvatarUploader userId={user.id} currentUrl={user.avatar_url} />
+        <AvatarUploader
+          userId={user.id}
+          currentUrl={user.avatar_url}
+          staticGallery={AVATAR_GALLERY as readonly string[]}
+          uploadedGallery={uploadedAvatars}
+        />
       </section>
 
       <section className="space-y-4">
