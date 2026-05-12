@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check } from 'lucide-react'
+import { Check, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -53,7 +53,7 @@ export function MistakesRow({ mistakes }: { mistakes: Mistake[] }) {
 
   return (
     <section>
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-micro uppercase tracking-[0.3em] text-whitex-faint">
           What you got wrong{' '}
           <span className="ml-1 text-whitex-muted">
@@ -61,14 +61,25 @@ export function MistakesRow({ mistakes }: { mistakes: Mistake[] }) {
             {reviewedCount > 0 && !showAll ? ` · ${reviewedCount} reviewed` : ''})
           </span>
         </h2>
-        {reviewedCount > 0 && (
-          <button
-            onClick={() => setShowAll(s => !s)}
-            className="text-micro uppercase tracking-wider text-whitex-faint transition-colors hover:text-whitex-soft"
+        <div className="flex items-center gap-3">
+          <a
+            href="/api/me/mistakes/pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-midnight-line bg-midnight-elevated/60 px-3 py-1.5 text-micro font-medium uppercase tracking-wider text-whitex-soft transition-colors hover:bg-midnight-line"
           >
-            {showAll ? 'Hide reviewed' : 'Show all'}
-          </button>
-        )}
+            <Download className="h-3 w-3" />
+            Download PDF
+          </a>
+          {reviewedCount > 0 && (
+            <button
+              onClick={() => setShowAll(s => !s)}
+              className="text-micro uppercase tracking-wider text-whitex-faint transition-colors hover:text-whitex-soft"
+            >
+              {showAll ? 'Hide reviewed' : 'Show all'}
+            </button>
+          )}
+        </div>
       </div>
 
       {visible.length === 0 ? (

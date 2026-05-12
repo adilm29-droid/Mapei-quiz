@@ -2,6 +2,7 @@ import { renderToBuffer } from '@react-pdf/renderer'
 import * as React from 'react'
 import { UserReport, type UserReportProps } from './UserReport'
 import { AdminReport, type AdminReportProps } from './AdminReport'
+import { MistakesReport, type MistakesReportProps } from './MistakesReport'
 import { formatUaeDateTime, formatDuration } from '@/lib/utils/timezone'
 import type { SupabaseAdmin } from '@/lib/supabase-admin'
 
@@ -13,6 +14,11 @@ export async function renderUserReport(props: UserReportProps): Promise<Buffer> 
 /** Renders the admin PDF and returns the raw PDF bytes as a Buffer. */
 export async function renderAdminReport(props: AdminReportProps): Promise<Buffer> {
   return await renderToBuffer(React.createElement(AdminReport, props) as any)
+}
+
+/** Renders the user mistakes / study-companion PDF. */
+export async function renderMistakesReport(props: MistakesReportProps): Promise<Buffer> {
+  return await renderToBuffer(React.createElement(MistakesReport, props) as any)
 }
 
 /**
