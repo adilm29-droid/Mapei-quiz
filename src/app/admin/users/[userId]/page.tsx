@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Download } from 'lucide-react'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { Avatar } from '@/components/avatar/avatar'
+import { AvatarUploader } from './_components/avatar-uploader'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +26,7 @@ export default async function AdminUserOverview({
 
   const { data: rawUser } = await supabase
     .from('users')
-    .select('id, username, first_name, last_name')
+    .select('id, username, first_name, last_name, avatar_url')
     .eq('id', userId)
     .maybeSingle()
   const user = rawUser as any
@@ -66,12 +68,26 @@ export default async function AdminUserOverview({
         <ArrowLeft className="h-4 w-4" /> All users
       </Link>
 
-      <header>
-        <h1 className="text-h1 font-bold text-white">{fullName}</h1>
-        <p className="mt-1 font-mono text-micro tabular text-whitex-faint">
-          user_id: {user.id}
-        </p>
+      <header className="flex flex-wrap items-center gap-4">
+        <Avatar
+          size="lg"
+          username={user.username}
+          first_name={user.first_name}
+          last_name={user.last_name}
+          src={user.avatar_url}
+        />
+        <div>
+          <h1 className="text-h1 font-bold text-white">{fullName}</h1>
+          <p className="mt-1 font-mono text-micro tabular text-whitex-faint">
+            user_id: {user.id}
+          </p>
+        </div>
       </header>
+
+      <section>
+        <h2 className="mb-2 text-h3 font-semibold text-white">Profile picture</h2>
+        <AvatarUploader userId={user.id} currentUrl={user.avatar_url} />
+      </section>
 
       <section className="space-y-4">
         <h2 className="text-h3 font-semibold text-white">
