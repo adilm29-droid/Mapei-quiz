@@ -71,7 +71,10 @@ export async function PATCH(
   const slotNum = (['A', 'B', 'C', 'D'] as const).indexOf(slot) + 1
   const originalLetter: AnswerLetter = slotToOriginalLetter(orderForQ, slotNum as 1 | 2 | 3 | 4)
 
-  const newAnswers = { ...(attempt.answers ?? {}), [questionId]: originalLetter }
+  // attempt.answers comes back as Json from the generated types — coerce
+  // to the concrete shape we know is stored (an object keyed by question id).
+  const prior = (attempt.answers ?? {}) as Record<string, AnswerLetter>
+  const newAnswers = { ...prior, [questionId]: originalLetter }
   let newIdx = attempt.current_question_index ?? 0
   if (advanceTo !== null && advanceTo >= 0 && advanceTo < order.length) {
     newIdx = advanceTo

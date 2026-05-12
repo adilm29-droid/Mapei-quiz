@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth-guard'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import type { TablesUpdate } from '@/types/database'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -33,7 +34,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  const update: Record<string, unknown> = {}
+  const update: TablesUpdate<'users'> = {}
 
   if (typeof body.firstName === 'string') update.first_name = body.firstName.trim() || null
   if (typeof body.lastName === 'string') update.last_name = body.lastName.trim() || null

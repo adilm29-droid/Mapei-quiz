@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database'
 
 /**
  * Server-only Supabase client using the service-role key.
@@ -7,10 +8,21 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
  *
  * Lazy-initialized so a missing env var only blows up when a route
  * actually tries to use it (not at module-import time during build).
+ *
+ * Typed with the generated `Database` schema — query results auto-infer
+ * their Row shape (no more `(row as any).foo`). Regenerate
+ * `src/types/database.ts` after every schema change:
+ *
+ *   curl -H "Authorization: Bearer $TOKEN" \
+ *     https://api.supabase.com/v1/projects/<ref>/types/typescript \
+ *     | node -e "process.stdout.write(JSON.parse(require('fs').readFileSync(0,'utf8')).types)" \
+ *     > src/types/database.ts
  */
-let cached: SupabaseClient | null = null
+export type SupabaseAdmin = SupabaseClient<Database>
 
-export function getSupabaseAdmin(): SupabaseClient {
+let cached: SupabaseAdmin | null = null
+
+export function getSupabaseAdmin(): SupabaseAdmin {
   if (cached) return cached
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -26,7 +38,7 @@ export function getSupabaseAdmin(): SupabaseClient {
     )
   }
 
-  cached = createClient(url, serviceKey, {
+  cached = createClient<Database>(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
   return cached

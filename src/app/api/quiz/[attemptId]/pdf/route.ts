@@ -148,7 +148,8 @@ export async function GET(
       xpEarned: attempt.xp_awarded ?? 0,
       rankAtCompletion,
       totalCompletions,
-      ip: attempt.ip_address ?? null,
+      // ip_address is Postgres inet — typed as `unknown` by the codegen
+      ip: (attempt.ip_address as string | null) ?? null,
       userAgent: attempt.user_agent ?? null,
       startedAtUae: formatUaeDateTime(attempt.started_at ?? new Date()),
       submittedAtUae: formatUaeDateTime(attempt.submitted_at ?? new Date()),

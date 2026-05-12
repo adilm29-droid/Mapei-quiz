@@ -53,7 +53,7 @@ export async function GET(
   // Optional ?q=<index> override
   const url = new URL(request.url)
   const qParam = url.searchParams.get('q')
-  const order: string[] = attempt.question_order
+  const order = attempt.question_order as string[]
   let idx = attempt.current_question_index ?? 0
   if (qParam !== null) {
     const parsed = parseInt(qParam, 10)

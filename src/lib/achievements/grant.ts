@@ -1,6 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database'
 import { evaluateAchievements, type AchievementFacts } from './evaluate'
 import { uaeDate } from '@/lib/uae-time'
+
+type DB = SupabaseClient<Database>
 
 /**
  * Grant any newly-earned achievements for the user. Idempotent — duplicate
@@ -21,7 +24,7 @@ export interface NewAchievement {
 }
 
 export async function gatherFacts(
-  supabase: SupabaseClient,
+  supabase: DB,
   userId: string,
   quizId: string,
   opts: { isLeaderboardAttempt: boolean; scorePercent: number | null },
@@ -97,7 +100,7 @@ export async function gatherFacts(
 }
 
 export async function grantAchievements(
-  supabase: SupabaseClient,
+  supabase: DB,
   userId: string,
   facts: AchievementFacts,
 ): Promise<NewAchievement[]> {
@@ -139,7 +142,7 @@ export async function grantAchievements(
  * (e.g. the reveal-leaderboards cron only fires once per quiz reveal).
  */
 export async function incrementAchievement(
-  supabase: SupabaseClient,
+  supabase: DB,
   userId: string,
   achievementId: string,
 ): Promise<{ unlock_count: number; wasFirst: boolean }> {
@@ -177,7 +180,7 @@ export async function incrementAchievement(
  * attempt_count, append today's UAE date if not already in the array.
  */
 export async function bumpPracticeCounter(
-  supabase: SupabaseClient,
+  supabase: DB,
   userId: string,
   quizId: string,
 ): Promise<{ attempt_count: number; practice_dates: string[] }> {
