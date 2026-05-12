@@ -111,10 +111,17 @@ export async function POST(request: Request) {
     )
   }
 
-  // Fire-and-forget admin notification — failure here does not block the user.
+  // Fire-and-forget emails. Two go out at registration time:
+  //   1. admin notification with approve/reject buttons
+  //   2. user confirmation with username + the password they just typed
+  //      (account is pending — login_url is included but the email body
+  //       makes clear they must wait for admin approval first)
+  // Neither blocks the response.
   try {
     const origin = new URL(request.url).origin
-    await fetch(`${origin}/api/send-email`, {
+
+    // 1. admin notification
+    fetch(`${origin}/api/send-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -126,6 +133,25 @@ export async function POST(request: Request) {
           email,
           username,
           origin,
+        },
+      }),
+    }).catch(() => {})
+
+    // 2. user confirmation with credentials
+    fetch(`${origin}/api/send-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'account_created',
+        data: {
+          email,
+          first_name: firstName,
+          username,
+          // The user typed this seconds ago — they already know it. We
+          // echo it back so they have a record of exactly what was saved.
+          temp_password: password,
+          login_url: `${origin}/signin`,
+          is_pending: true,
         },
       }),
     }).catch(() => {})

@@ -501,6 +501,8 @@ async function fireEngagementEmails(args: {
           current_streak: streakCurrent,
           review_url: `${origin}/quiz/${attempt.quiz_id}/review?attempt=${attempt.id}`,
           pdf_url: `${origin}/api/quiz/${attempt.id}/pdf?variant=user`,
+          // Passed to send-email which renders + attaches the user PDF.
+          attempt_id: attempt.id,
         },
       }),
     }).catch(() => {})

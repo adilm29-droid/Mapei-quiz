@@ -12,6 +12,8 @@
 import nodemailer from 'nodemailer'
 import { render } from '@react-email/render'
 import { buildDecisionUrl } from '@/lib/decision-token'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { assembleUserReportPdf } from '@/lib/pdf/render'
 
 import AccountCreated from '@/emails/AccountCreated'
 import NewRegistration from '@/emails/NewRegistration'
@@ -56,13 +58,16 @@ export async function POST(request) {
     switch (type) {
       case 'account_created': {
         to = data.email
-        subject = 'Welcome to Lapiz Blue Quiz'
+        subject = data.is_pending
+          ? 'Welcome to Lapiz Blue Quiz — account pending approval'
+          : 'Welcome to Lapiz Blue Quiz'
         html = await render(
           AccountCreated({
             first_name: data.first_name,
             username: data.username,
             temp_password: data.temp_password,
             login_url: data.login_url,
+            is_pending: !!data.is_pending,
           }),
         )
         break
@@ -311,11 +316,33 @@ export async function POST(request) {
         return Response.json({ error: 'Unknown email type' }, { status: 400 })
     }
 
+    // Optional PDF attachment — currently only the completion email uses
+    // this. The submit route passes `attempt_id`; we render the user-facing
+    // PDF here and attach. Render failure is non-fatal — the email goes
+    // out without the attachment and the in-body download button remains.
+    const attachments: { filename: string; content: Buffer; contentType: string }[] = []
+    if (type === 'quiz_completed' && data?.attempt_id) {
+      try {
+        const supabase = getSupabaseAdmin()
+        const built = await assembleUserReportPdf(supabase, data.attempt_id)
+        if (built) {
+          attachments.push({
+            filename: built.filename,
+            content: built.pdf,
+            contentType: 'application/pdf',
+          })
+        }
+      } catch (e) {
+        console.error('[send-email] pdf assembly failed (sending without attachment):', e)
+      }
+    }
+
     await transporter.sendMail({
       from: `"Lapiz Blue Quiz" <${process.env.ZOHO_EMAIL}>`,
       to,
       subject,
       html,
+      attachments: attachments.length ? attachments : undefined,
     })
 
     return Response.json({ success: true })
