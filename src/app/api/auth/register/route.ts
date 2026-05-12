@@ -79,6 +79,10 @@ export async function POST(request: Request) {
           email,
           username,
           password_hash,
+          // Temporary plaintext so the admin's approval email can echo
+          // the credentials back to the user. Nulled out in
+          // /api/auth/decision after the email goes out (migration 008).
+          pending_password_plain: password,
           role: 'staff',
           status: 'pending',
         },

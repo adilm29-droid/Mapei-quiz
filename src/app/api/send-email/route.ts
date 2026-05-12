@@ -114,6 +114,7 @@ export async function POST(request) {
           Approved({
             first_name: data.first_name,
             username: data.username,
+            temp_password: data.temp_password ?? null,
             login_url: data.login_url,
           }),
         )

@@ -72,10 +72,12 @@ export async function GET(request: Request) {
     )
   }
 
-  // Fetch the user we're acting on
+  // Fetch the user we're acting on. pending_password_plain is read here
+  // so the approval email can echo the credentials back; it gets nulled
+  // out further down once the email is queued.
   const { data: user, error: fetchErr } = await supabase
     .from('users')
-    .select('id,username,first_name,last_name,email,status')
+    .select('id,username,first_name,last_name,email,status,pending_password_plain')
     .eq('id', userId)
     .maybeSingle()
 
@@ -127,7 +129,11 @@ export async function GET(request: Request) {
     )
   }
 
-  // If approved, fire the welcome email to the user (fire-and-forget)
+  // If approved, fire the welcome email to the user (fire-and-forget),
+  // including the plaintext password we stashed at registration. Then
+  // null the column out so it doesn't sit there indefinitely. Tarun has
+  // explicitly accepted this tradeoff (plaintext lives in the DB row
+  // between register and approve only).
   if (action === 'approve' && user.email) {
     try {
       const origin = url.origin
@@ -140,11 +146,20 @@ export async function GET(request: Request) {
             email: user.email,
             first_name: user.first_name,
             username: user.username,
+            temp_password: user.pending_password_plain ?? null,
+            login_url: `${origin}/signin`,
           },
         }),
       }).catch(() => {})
     } catch {
       /* swallow — status was updated, email is best-effort */
+    }
+
+    if (user.pending_password_plain) {
+      await supabase
+        .from('users')
+        .update({ pending_password_plain: null })
+        .eq('id', userId)
     }
   }
 
