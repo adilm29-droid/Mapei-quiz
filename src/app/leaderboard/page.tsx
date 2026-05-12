@@ -5,6 +5,8 @@ import { getSession } from '@/lib/session'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { Avatar } from '@/components/avatar/avatar'
 import { Badge } from '@/components/ui/badge'
+import { LEADERBOARD_TOPPER_IMAGE } from '@/lib/achievements/badge-images'
+import { LeaderboardAutoRefresh } from './_components/auto-refresh'
 
 export const dynamic = 'force-dynamic'
 
@@ -138,6 +140,7 @@ export default async function LeaderboardPage({
       </header>
 
       <main className="mx-auto max-w-3xl space-y-2 px-5 py-6">
+        <LeaderboardAutoRefresh />
         <div className="mb-2 text-caption text-whitex-muted">{title}</div>
 
         {scope === 'quiz' && latestQuiz && !latestQuiz.leaderboard_visible && (
@@ -176,22 +179,34 @@ function Row({ row, maxScore }: { row: RowItem; maxScore: number }) {
   return (
     <div
       className={`flex items-center gap-4 rounded-2xl border px-4 py-3 backdrop-blur ${
-        row.isMe
+        row.rank === 1
+          ? 'border-amber-400/40 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent shadow-glow-soft'
+          : row.isMe
           ? 'border-info/40 bg-info/5'
           : 'border-midnight-line bg-midnight-elevated/40'
       }`}
     >
-      <span
-        className={
-          row.rank <= 3
-            ? `flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-${
-                row.rank === 1 ? 'champion' : row.rank === 2 ? 'silver' : 'bronze'
-              } text-h3 font-bold text-white shadow-sm`
-            : 'flex h-9 w-9 items-center justify-center rounded-xl border border-midnight-line text-h3 font-bold text-whitex-muted tabular'
-        }
-      >
-        {row.rank}
-      </span>
+      {row.rank === 1 ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={LEADERBOARD_TOPPER_IMAGE}
+          alt="Leaderboard Topper"
+          title="Leaderboard Topper · 1st Place"
+          className="h-12 w-12 shrink-0 object-contain drop-shadow"
+        />
+      ) : (
+        <span
+          className={
+            row.rank <= 3
+              ? `flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-${
+                  row.rank === 2 ? 'silver' : 'bronze'
+                } text-h3 font-bold text-white shadow-sm`
+              : 'flex h-9 w-9 items-center justify-center rounded-xl border border-midnight-line text-h3 font-bold text-whitex-muted tabular'
+          }
+        >
+          {row.rank}
+        </span>
+      )}
       <Avatar
         size="md"
         username={row.username}

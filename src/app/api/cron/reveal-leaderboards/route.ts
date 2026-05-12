@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireCron } from '@/lib/cron-guard'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { incrementAchievement } from '@/lib/achievements/grant'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -76,6 +77,22 @@ export async function GET(request: Request) {
         `@${row.users.username}`,
       score: row.final_score ?? 0,
     }))
+
+    // Weekly Leaderboard Topper — grant +1 to the #1 finisher for this
+    // quiz. The reveal cron runs once per quiz×reveal so this is
+    // idempotent without extra tracking.
+    const topper = (top3 ?? [])[0]
+    if (topper) {
+      try {
+        await incrementAchievement(
+          supabase,
+          topper.user_id,
+          'global:leaderboard_topper',
+        )
+      } catch (e) {
+        console.error('[cron/reveal-leaderboards] topper grant error:', e)
+      }
+    }
 
     // Get full per-user ranks for the user_rank field
     const { data: allCompletes } = await supabase

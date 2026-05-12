@@ -4,6 +4,7 @@ import { ArrowLeft, Award, BookOpen, BookMarked, CheckCircle, Crown, Compass, Fo
 import { getSession } from '@/lib/session'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { GLOBAL_CATALOG, PER_QUIZ_CATALOG, globalId, perQuizId } from '@/lib/achievements/catalog'
+import { getBadgeImage } from '@/lib/achievements/badge-images'
 import { formatUaeDateTime } from '@/lib/utils/timezone'
 
 export const dynamic = 'force-dynamic'
@@ -62,10 +63,13 @@ export default async function MyAchievementsPage() {
 
   const { data: rawUa } = await supabase
     .from('user_achievements')
-    .select('achievement_id, unlocked_at')
+    .select('achievement_id, unlocked_at, unlock_count')
     .eq('user_id', session.userId)
-  const unlocked = new Map<string, string>(
-    (rawUa ?? []).map((r: any) => [r.achievement_id, r.unlocked_at]),
+  const unlocked = new Map<string, { at: string; count: number }>(
+    (rawUa ?? []).map((r: any) => [
+      r.achievement_id,
+      { at: r.unlocked_at, count: r.unlock_count ?? 1 },
+    ]),
   )
 
   return (
@@ -90,15 +94,17 @@ export default async function MyAchievementsPage() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {GLOBAL_CATALOG.map(entry => {
               const id = globalId(entry.code)
-              const at = unlocked.get(id)
+              const u = unlocked.get(id)
               return (
                 <Tile
                   key={id}
                   iconName={entry.icon}
+                  image={getBadgeImage('global', entry.code)}
                   name={entry.name}
                   description={entry.description}
                   tier={entry.tier}
-                  unlockedAt={at ?? null}
+                  unlockedAt={u?.at ?? null}
+                  count={u?.count ?? 0}
                 />
               )
             })}
@@ -118,15 +124,17 @@ export default async function MyAchievementsPage() {
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {sorted.map(entry => {
                   const id = perQuizId(q.id, entry.code)
-                  const at = unlocked.get(id)
+                  const u = unlocked.get(id)
                   return (
                     <Tile
                       key={id}
                       iconName={entry.icon}
+                      image={getBadgeImage('per_quiz', entry.code)}
                       name={entry.name}
                       description={entry.description}
                       tier={entry.tier}
-                      unlockedAt={at ?? null}
+                      unlockedAt={u?.at ?? null}
+                      count={u?.count ?? 0}
                     />
                   )
                 })}
@@ -141,30 +149,48 @@ export default async function MyAchievementsPage() {
 
 function Tile({
   iconName,
+  image,
   name,
   description,
   tier,
   unlockedAt,
+  count,
 }: {
   iconName: string
+  image: string | null
   name: string
   description: string
   tier: string
   unlockedAt: string | null
+  count: number
 }) {
   const Icon = ICON_MAP[iconName] ?? Award
   const tierGradient = TIER_BG[tier] ?? TIER_BG.aurora
   const isUnlocked = !!unlockedAt
   return (
     <div
-      title={`${name} — ${description}`}
+      title={
+        count > 1
+          ? `${name} — ${description} · earned ${count}×`
+          : `${name} — ${description}`
+      }
       className={
         isUnlocked
-          ? `flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl bg-gradient-to-br ${tierGradient} p-4 text-center text-white shadow-glow-soft ring-1 ring-white/15`
+          ? `relative flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl bg-gradient-to-br ${tierGradient} p-4 text-center text-white shadow-glow-soft ring-1 ring-white/15`
           : 'flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl border border-midnight-line bg-midnight-elevated/30 p-4 text-center opacity-40 grayscale'
       }
     >
-      <Icon className="h-7 w-7 drop-shadow" />
+      {count > 1 && (
+        <span className="absolute right-2 top-2 rounded-full bg-black/40 px-2 py-0.5 font-mono text-micro font-bold tabular text-white ring-1 ring-white/30 backdrop-blur">
+          {count}×
+        </span>
+      )}
+      {image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={image} alt={name} className="h-16 w-16 object-contain drop-shadow" />
+      ) : (
+        <Icon className="h-7 w-7 drop-shadow" />
+      )}
       <p className="line-clamp-2 text-micro font-bold uppercase tracking-wider">{name}</p>
       {isUnlocked ? (
         <p className="text-micro font-mono text-white/80">

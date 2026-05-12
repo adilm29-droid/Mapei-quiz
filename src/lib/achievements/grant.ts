@@ -130,6 +130,49 @@ export async function grantAchievements(
 }
 
 /**
+ * Increment an "incrementable" achievement (currently only
+ * `global:leaderboard_topper`). First grant inserts with unlock_count=1;
+ * subsequent grants increment via ON CONFLICT.
+ *
+ * Returns the new unlock_count after the operation. Idempotent only
+ * if called from a context that itself guarantees one-call-per-event
+ * (e.g. the reveal-leaderboards cron only fires once per quiz reveal).
+ */
+export async function incrementAchievement(
+  supabase: SupabaseClient,
+  userId: string,
+  achievementId: string,
+): Promise<{ unlock_count: number; wasFirst: boolean }> {
+  const { data: existing } = await supabase
+    .from('user_achievements')
+    .select('unlock_count')
+    .eq('user_id', userId)
+    .eq('achievement_id', achievementId)
+    .maybeSingle()
+
+  if (!existing) {
+    await supabase.from('user_achievements').insert({
+      user_id: userId,
+      achievement_id: achievementId,
+      unlocked_at: new Date().toISOString(),
+      unlock_count: 1,
+    })
+    return { unlock_count: 1, wasFirst: true }
+  }
+
+  const nextCount = (existing.unlock_count ?? 1) + 1
+  await supabase
+    .from('user_achievements')
+    .update({
+      unlock_count: nextCount,
+      unlocked_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId)
+    .eq('achievement_id', achievementId)
+  return { unlock_count: nextCount, wasFirst: false }
+}
+
+/**
  * Update the `practice_counters` row for a practice attempt: bump the
  * attempt_count, append today's UAE date if not already in the array.
  */

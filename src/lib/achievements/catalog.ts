@@ -34,6 +34,9 @@ export type Threshold =
   | { type: 'attempt_1_done' }
   | { type: 'score_pct'; value: number }
   | { type: 'practice_count'; value: number }
+  // Marker for externally-granted achievements. The reveal-leaderboards
+  // cron increments this whenever a user finishes #1 on a weekly quiz.
+  | { type: 'weekly_leaderboard_topper' }
 
 export interface CatalogEntry {
   code: string
@@ -46,6 +49,7 @@ export interface CatalogEntry {
 }
 
 export const GLOBAL_CATALOG: readonly CatalogEntry[] = [
+  { code: 'leaderboard_topper', name: 'Leaderboard Topper', description: 'Finish #1 on a weekly quiz leaderboard', icon: 'Crown',     tier: 'champion', threshold: { type: 'weekly_leaderboard_topper' },         display_order: 5 },
   { code: 'first_steps',     name: 'First Steps',     description: 'Complete your first quiz',                     icon: 'Footprints',    tier: 'spring',   threshold: { type: 'first_completion' },                  display_order: 10 },
   { code: 'quiz_explorer',   name: 'Quiz Explorer',   description: 'Complete Attempt 1 on 5 different quizzes',    icon: 'Compass',       tier: 'aurora',   threshold: { type: 'distinct_completions', value: 5 },    display_order: 20 },
   { code: 'quiz_veteran',    name: 'Quiz Veteran',    description: 'Complete Attempt 1 on 10 different quizzes',   icon: 'Medal',         tier: 'plasma',   threshold: { type: 'distinct_completions', value: 10 },   display_order: 30 },

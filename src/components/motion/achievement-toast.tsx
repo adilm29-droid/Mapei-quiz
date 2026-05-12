@@ -25,6 +25,8 @@ export interface AchievementForToast {
   name: string
   description: string
   tier_color: string
+  image?: string | null
+  unlock_count?: number
 }
 
 const TIER_BG: Record<string, string> = {
@@ -90,11 +92,18 @@ function Toast({
       }
     >
       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15">
-        <Award className="h-6 w-6 drop-shadow" />
+        {toast.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={toast.image} alt="" className="h-11 w-11 object-contain drop-shadow" />
+        ) : (
+          <Award className="h-6 w-6 drop-shadow" />
+        )}
       </div>
       <div>
         <p className="text-micro font-semibold uppercase tracking-wider text-white/80">
-          Achievement unlocked
+          {toast.unlock_count && toast.unlock_count > 1
+            ? `Repeat × ${toast.unlock_count}`
+            : 'Achievement unlocked'}
         </p>
         <p className="mt-0.5 text-caption font-bold leading-tight">{toast.name}</p>
         <p className="mt-0.5 text-micro text-white/85">{toast.description}</p>

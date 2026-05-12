@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Users, FileText, Inbox, BookOpen, BarChart3 } from 'lucide-react'
+import { Users, FileText, Inbox, BookOpen, BarChart3, Mail } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const TABS = [
@@ -10,6 +10,7 @@ const TABS = [
   { href: '/admin/quizzes',  label: 'Quizzes',  Icon: FileText },
   { href: '/admin/library',  label: 'Library',  Icon: BookOpen },
   { href: '/admin/reports',  label: 'Reports',  Icon: BarChart3 },
+  { href: '/admin/emails',   label: 'Emails',   Icon: Mail },
   { href: '/admin/requests', label: 'Requests', Icon: Inbox },
 ] as const
 

@@ -8,6 +8,7 @@ import { GradientButton } from '@/components/ui/gradient-button'
 import { Button } from '@/components/ui/button'
 import { NumberTicker } from '@/components/ui/number-ticker'
 import { AchievementToastStack, type AchievementForToast } from '@/components/motion/achievement-toast'
+import { getBadgeImage } from '@/lib/achievements/badge-images'
 import type { AttemptResultForClient } from '@/lib/types'
 
 export function ResultsClient({ quizId, attemptId }: { quizId: string; attemptId: string }) {
@@ -26,6 +27,7 @@ export function ResultsClient({ quizId, attemptId }: { quizId: string; attemptId
       name: a.name,
       description: a.description,
       tier_color: a.tier_color,
+      image: getBadgeImage(a.scope, a.code),
     }))
     setActiveToasts(queued)
   }, [result])
