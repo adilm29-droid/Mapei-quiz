@@ -46,7 +46,12 @@ export async function GET(request: Request) {
       .eq('is_leaderboard_attempt', true)
       .is('deleted_at', null)
 
-    if ((count ?? 0) < 5) continue
+    // Topper badge + reveal email threshold. Per Tarun 2026-05-12:
+    // bumped from 5 → 6. The podium itself shows on /home as soon as
+    // anyone has completed (gated at 1 attempt in home/page.tsx); this
+    // threshold only controls when the cron flips leaderboard_visible,
+    // emails all staff, and grants the Leaderboard Topper achievement.
+    if ((count ?? 0) < 6) continue
 
     // Flip the flag
     await supabase

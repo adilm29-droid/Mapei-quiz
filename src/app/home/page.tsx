@@ -92,10 +92,25 @@ export default async function HomePage() {
   let attemptsSoFar = 0
 
   if (latestQuiz) {
-    if (latestQuiz.leaderboard_visible) {
+    // Count leaderboard attempts for the latest quiz. Per Tarun
+    // 2026-05-12: as soon as ONE staff member completes the quiz, the
+    // podium should display whoever has finished — no waiting for the
+    // cron to flip leaderboard_visible. The topper badge + email still
+    // gate on the higher threshold (6) inside the reveal cron.
+    const { count: cc } = await supabase
+      .from('attempts')
+      .select('id', { count: 'exact', head: true })
+      .eq('quiz_id', latestQuiz.id)
+      .eq('is_leaderboard_attempt', true)
+      .is('deleted_at', null)
+    attemptsSoFar = cc ?? 0
+
+    if (attemptsSoFar > 0) {
       podiumQuizId = latestQuiz.id
     } else {
-      // Fallback: any older quiz whose leaderboard IS visible
+      // Nobody has completed this week's quiz yet — fall back to the
+      // most recent older quiz that has any completions (still useful
+      // for ambient context).
       const { data: prior } = await supabase
         .from('quizzes')
         .select('id, max_score')
@@ -106,17 +121,6 @@ export default async function HomePage() {
         .maybeSingle()
       podiumQuizId = prior?.id ?? null
     }
-
-    // Count leaderboard attempts for the latest quiz (used for placeholder
-    // copy "X of 5 attempts so far"). Practice attempts don't count toward
-    // the reveal threshold per spec §4.
-    const { count: cc } = await supabase
-      .from('attempts')
-      .select('id', { count: 'exact', head: true })
-      .eq('quiz_id', latestQuiz.id)
-      .eq('is_leaderboard_attempt', true)
-      .is('deleted_at', null)
-    attemptsSoFar = cc ?? 0
   }
 
   if (podiumQuizId) {

@@ -164,11 +164,12 @@ function PodiumPlaceholder({ attemptsSoFar, isAdmin }: { attemptsSoFar: number; 
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center">
         <Lock className="h-6 w-6 animate-pulse text-whitex-muted" />
         <p className="max-w-[260px] text-body text-whitex-soft">
-          Leaderboard reveals once 5 staff complete this week's quiz.
+          Be the first to complete this week's quiz — the podium fills up as
+          staff finish.
         </p>
         {isAdmin && (
           <p className="text-micro uppercase tracking-wider text-whitex-faint">
-            {attemptsSoFar} / 5 attempts so far
+            {attemptsSoFar} / 6 to award Leaderboard Topper
           </p>
         )}
       </div>
