@@ -30,20 +30,36 @@ interface PasswordFieldProps {
   onChange: (v: string) => void
   placeholder: string
   onEnter?: () => void
+  /** Field name — required for password managers to detect & save. */
+  name?: string
+  /**
+   * Autocomplete hint for the browser. Use 'current-password' on
+   * sign-in (so managers offer to fill the saved password) and
+   * 'new-password' on register (so they offer to generate/save).
+   */
+  autoComplete?: string
 }
 
-function PasswordField({ value, onChange, placeholder, onEnter }: PasswordFieldProps) {
+function PasswordField({
+  value,
+  onChange,
+  placeholder,
+  onEnter,
+  name = 'password',
+  autoComplete = 'current-password',
+}: PasswordFieldProps) {
   const [shown, setShown] = useState(false)
   return (
     <div className="relative">
       <input
         type={shown ? 'text' : 'password'}
+        name={name}
         placeholder={placeholder}
         value={value}
         onChange={e => onChange(e.target.value)}
         onKeyDown={e => onEnter && e.key === 'Enter' && onEnter()}
         className={pwdInputClass}
-        autoComplete="current-password"
+        autoComplete={autoComplete}
       />
       <button
         type="button"
@@ -335,18 +351,27 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
             </div>
 
             {mode === 'login' ? (
-              <>
+              <form
+                onSubmit={e => {
+                  e.preventDefault()
+                  handleLogin()
+                }}
+              >
                 <div className="flex flex-col gap-3.5">
                   <input
                     type="text"
+                    name="username"
                     placeholder="Username"
                     value={username}
                     autoCapitalize="none"
                     autoCorrect="off"
+                    autoComplete="username"
                     onChange={e => setUsername(e.target.value)}
                     className={inputClass}
                   />
                   <PasswordField
+                    name="password"
+                    autoComplete="current-password"
                     placeholder="Password"
                     value={password}
                     onChange={setPassword}
@@ -361,7 +386,7 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
                 )}
 
                 <Button
-                  onClick={handleLogin}
+                  type="submit"
                   disabled={loading}
                   className="mt-6 h-12 w-full rounded-full bg-white text-[#040a1c] hover:bg-white/90 disabled:opacity-60"
                 >
@@ -394,6 +419,7 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
 
                 <div className="text-center">
                   <button
+                    type="button"
                     onClick={() => {
                       setMode('register')
                       setToast(null)
@@ -403,13 +429,20 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
                     Create new account
                   </button>
                 </div>
-              </>
+              </form>
             ) : (
-              <>
+              <form
+                onSubmit={e => {
+                  e.preventDefault()
+                  handleRegister()
+                }}
+              >
                 <div className="flex flex-col gap-3">
                   <div className="flex gap-3">
                     <input
                       type="text"
+                      name="given-name"
+                      autoComplete="given-name"
                       placeholder="First name"
                       value={firstName}
                       onChange={e => setFirstName(e.target.value)}
@@ -417,6 +450,8 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
                     />
                     <input
                       type="text"
+                      name="family-name"
+                      autoComplete="family-name"
                       placeholder="Last name"
                       value={lastName}
                       onChange={e => setLastName(e.target.value)}
@@ -425,6 +460,8 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
                   </div>
                   <input
                     type="email"
+                    name="email"
+                    autoComplete="email"
                     placeholder="Email address"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
@@ -432,19 +469,25 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
                   />
                   <input
                     type="text"
+                    name="username"
                     placeholder="Username"
                     value={username}
                     autoCapitalize="none"
                     autoCorrect="off"
+                    autoComplete="username"
                     onChange={e => setUsername(e.target.value)}
                     className={inputClass}
                   />
                   <PasswordField
+                    name="new-password"
+                    autoComplete="new-password"
                     placeholder="Password (min 6 chars)"
                     value={password}
                     onChange={setPassword}
                   />
                   <PasswordField
+                    name="confirm-password"
+                    autoComplete="new-password"
                     placeholder="Confirm password"
                     value={confirmPassword}
                     onChange={setConfirmPassword}
@@ -453,7 +496,7 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
                 </div>
 
                 <Button
-                  onClick={handleRegister}
+                  type="submit"
                   disabled={loading}
                   className="mt-6 h-12 w-full rounded-full bg-white text-[#040a1c] hover:bg-white/90 disabled:opacity-60"
                 >
@@ -470,6 +513,7 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
                 <div className="my-6 h-px w-full bg-white/8" />
                 <div className="text-center">
                   <button
+                    type="button"
                     onClick={() => {
                       setMode('login')
                       setToast(null)
@@ -479,7 +523,7 @@ export function AuthForm({ className, onAuthSuccess }: AuthFormProps) {
                     Back to sign in
                   </button>
                 </div>
-              </>
+              </form>
             )}
           </motion.div>
         )}
