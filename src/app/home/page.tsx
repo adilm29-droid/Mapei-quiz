@@ -142,7 +142,7 @@ export default async function HomePage() {
       first_name: row.users.first_name,
       last_name: row.users.last_name,
       score: row.final_score ?? 0,
-      maxScore: latestQuiz?.max_score ?? 57,
+      maxScore: latestQuiz?.max_score ?? 30,
     }))
   }
 
