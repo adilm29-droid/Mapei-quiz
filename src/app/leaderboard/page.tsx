@@ -34,7 +34,8 @@ export default async function LeaderboardPage({
 
   const supabase = getSupabaseAdmin()
 
-  // ── Latest leaderboard-visible quiz (or any unlocked one if none visible yet) ─
+  // ── Latest unlocked quiz (display ungated — per 2026-05-12 change the
+  // podium / leaderboard show whenever ≥1 staff has completed) ────────
   const { data: latestQuiz } = await supabase
     .from('quizzes')
     .select('id, title, week_number, max_score, leaderboard_visible')
@@ -44,7 +45,6 @@ export default async function LeaderboardPage({
     .limit(1)
     .maybeSingle()
 
-  // ── Compose the rows ────────────────────────────────────────────────
   let rows: RowItem[] = []
   let title = ''
   let maxScore = 0
@@ -94,11 +94,11 @@ export default async function LeaderboardPage({
     }))
   }
 
-  // Top 3 podium-ette + rows 4-10 + me + neighbors
-  const top10 = rows.slice(0, 10)
-  const myIdx = rows.findIndex(r => r.isMe)
-  const neighborStart = Math.max(0, myIdx - 1)
-  const neighborSlice = myIdx >= 10 ? rows.slice(neighborStart, myIdx + 2) : []
+  // For the inline score bar we normalize to the highest score on the
+  // board (so #1's bar is always full). For per-quiz scope this is
+  // effectively the quiz's max_score because #1's score caps at that.
+  const peak = rows.length > 0 ? rows[0].score : 1
+  const scaleDenom = scope === 'quiz' && maxScore > 0 ? maxScore : Math.max(peak, 1)
 
   return (
     <div className="min-h-screen pb-12">
@@ -141,44 +141,57 @@ export default async function LeaderboardPage({
 
       <main className="mx-auto max-w-3xl space-y-2 px-5 py-6">
         <LeaderboardAutoRefresh />
-        <div className="mb-2 text-caption text-whitex-muted">{title}</div>
+        <div className="mb-3 flex items-baseline justify-between">
+          <h1 className="text-caption text-whitex-muted">{title}</h1>
+          {scope === 'quiz' && maxScore > 0 && (
+            <span className="font-mono text-micro tabular text-whitex-faint">
+              out of {maxScore}
+            </span>
+          )}
+        </div>
 
-        {scope === 'quiz' && latestQuiz && !latestQuiz.leaderboard_visible && (
-          <div className="rounded-2xl border border-midnight-line bg-midnight-elevated/40 p-6 text-center text-caption text-whitex-muted backdrop-blur">
-            🔒 Leaderboard reveals once 5 staff complete this week's quiz.
+        {rows.length === 0 ? (
+          <div className="rounded-2xl border border-midnight-line bg-midnight-elevated/40 p-8 text-center text-caption text-whitex-muted backdrop-blur">
+            {scope === 'quiz'
+              ? 'Be the first to complete this week’s quiz — the board fills up as staff finish.'
+              : 'No data yet for this scope.'}
           </div>
-        )}
-
-        {(scope !== 'quiz' || (latestQuiz?.leaderboard_visible ?? false) || rows.length > 0) && (
-          <>
-            {top10.map(r => (
-              <Row key={r.userId} row={r} maxScore={scope === 'quiz' ? maxScore : 0} />
-            ))}
-            {neighborSlice.length > 0 && (
-              <>
-                <div className="my-3 border-t border-dashed border-midnight-line" />
-                <div className="text-micro uppercase tracking-[0.3em] text-whitex-faint">Your neighborhood</div>
-                {neighborSlice.map(r => (
-                  <Row key={r.userId} row={r} maxScore={scope === 'quiz' ? maxScore : 0} />
-                ))}
-              </>
-            )}
-            {rows.length === 0 && (
-              <div className="rounded-2xl border border-midnight-line bg-midnight-elevated/40 p-8 text-center text-caption text-whitex-muted">
-                No data yet for this scope.
-              </div>
-            )}
-          </>
+        ) : (
+          rows.map(r => (
+            <Row
+              key={r.userId}
+              row={r}
+              scaleDenom={scaleDenom}
+              showOutOf={scope === 'quiz' ? maxScore : 0}
+            />
+          ))
         )}
       </main>
     </div>
   )
 }
 
-function Row({ row, maxScore }: { row: RowItem; maxScore: number }) {
+function Row({
+  row,
+  scaleDenom,
+  showOutOf,
+}: {
+  row: RowItem
+  scaleDenom: number
+  showOutOf: number
+}) {
+  const widthPct = scaleDenom > 0 ? Math.min(100, (row.score / scaleDenom) * 100) : 0
+  const barClass =
+    row.rank === 1
+      ? 'bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-500'
+      : row.rank === 2
+      ? 'bg-gradient-to-r from-slate-300 to-slate-500'
+      : row.rank === 3
+      ? 'bg-gradient-to-r from-amber-700 to-amber-900'
+      : 'bg-gradient-to-r from-aurora-from to-aurora-to'
   return (
     <div
-      className={`flex items-center gap-4 rounded-2xl border px-4 py-3 backdrop-blur ${
+      className={`relative overflow-hidden rounded-2xl border backdrop-blur ${
         row.rank === 1
           ? 'border-amber-400/40 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent shadow-glow-soft'
           : row.isMe
@@ -186,49 +199,60 @@ function Row({ row, maxScore }: { row: RowItem; maxScore: number }) {
           : 'border-midnight-line bg-midnight-elevated/40'
       }`}
     >
-      {row.rank === 1 ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={LEADERBOARD_TOPPER_IMAGE}
-          alt="Leaderboard Topper"
-          title="Leaderboard Topper · 1st Place"
-          className="h-12 w-12 shrink-0 object-contain drop-shadow"
-        />
-      ) : (
-        <span
-          className={
-            row.rank <= 3
-              ? `flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-${
-                  row.rank === 2 ? 'silver' : 'bronze'
-                } text-h3 font-bold text-white shadow-sm`
-              : 'flex h-9 w-9 items-center justify-center rounded-xl border border-midnight-line text-h3 font-bold text-whitex-muted tabular'
-          }
-        >
-          {row.rank}
-        </span>
-      )}
-      <Avatar
-        size="md"
-        username={row.username}
-        first_name={row.first_name}
-        last_name={row.last_name}
-        champion={row.isChampion}
-        isSelf={row.isMe}
+      {/* Score bar — sits behind the row content, width proportional to score */}
+      <div
+        aria-hidden
+        className={`absolute inset-y-0 left-0 opacity-15 ${barClass}`}
+        style={{ width: `${widthPct}%` }}
       />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-body font-semibold text-whitex-soft">
-          {[row.first_name, row.last_name].filter(Boolean).join(' ') || `@${row.username}`}
-          {row.isMe && (
-            <Badge tone="info" className="ml-2">
-              You
-            </Badge>
+
+      <div className="relative flex items-center gap-4 px-4 py-3">
+        {row.rank === 1 ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={LEADERBOARD_TOPPER_IMAGE}
+            alt="Leaderboard Topper"
+            title="Leaderboard Topper · 1st Place"
+            className="h-12 w-12 shrink-0 object-contain drop-shadow"
+          />
+        ) : (
+          <span
+            className={
+              row.rank <= 3
+                ? `flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-${
+                    row.rank === 2 ? 'silver' : 'bronze'
+                  } text-h3 font-bold text-white shadow-sm`
+                : 'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-midnight-line text-caption font-bold text-whitex-muted tabular'
+            }
+          >
+            {row.rank}
+          </span>
+        )}
+        <Avatar
+          size="md"
+          username={row.username}
+          first_name={row.first_name}
+          last_name={row.last_name}
+          champion={row.isChampion}
+          isSelf={row.isMe}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-body font-semibold text-whitex-soft">
+            {[row.first_name, row.last_name].filter(Boolean).join(' ') || `@${row.username}`}
+            {row.isMe && (
+              <Badge tone="info" className="ml-2">
+                You
+              </Badge>
+            )}
+          </p>
+          <p className="truncate text-caption text-whitex-muted">{row.title}</p>
+        </div>
+        <div className="text-right">
+          <p className="font-mono text-h3 tabular text-white">{row.score.toLocaleString()}</p>
+          {showOutOf > 0 && (
+            <p className="font-mono text-micro tabular text-whitex-faint">/ {showOutOf}</p>
           )}
-        </p>
-        <p className="truncate text-caption text-whitex-muted">{row.title}</p>
-      </div>
-      <div className="text-right">
-        <p className="font-mono text-h3 tabular text-white">{row.score.toLocaleString()}</p>
-        {maxScore > 0 && <p className="font-mono text-micro tabular text-whitex-faint">/ {maxScore}</p>}
+        </div>
       </div>
     </div>
   )
