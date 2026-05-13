@@ -57,15 +57,14 @@ from (
 where a.id = sub.attempt_id
   and a.final_score is distinct from sub.correct;
 
--- Verify
-select
-  'questions points distinct' as label,
-  array_agg(distinct points) as values
-from questions
-union all
-select
-  'quizzes max_score per quiz',
-  array_agg(q.title || ' = ' || q.max_score order by q.week_number)
+-- Verify — two separate SELECTs so the UNION ALL type mismatch
+-- (integer[] vs text[]) the original version triggered can't happen.
+select 'questions points distinct' as label,
+       array_agg(distinct points::text) as values
+from questions;
+
+select 'quizzes max_score per quiz' as label,
+       array_agg(q.title || ' = ' || q.max_score::text order by q.week_number) as values
 from quizzes q
 where q.deleted_at is null;
 
