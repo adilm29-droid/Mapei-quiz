@@ -55,9 +55,9 @@ export function UserTable({
   return (
     <div className="overflow-hidden rounded-2xl border border-midnight-line bg-midnight-elevated/40 backdrop-blur">
       <div className="overflow-x-auto">
-        <table className="w-full text-left">
+        <table className="w-full min-w-[900px] text-left">
           <thead>
-            <tr className="border-b border-midnight-line text-micro uppercase tracking-wider text-whitex-faint">
+            <tr className="border-b border-midnight-line bg-midnight-elevated/80 text-micro uppercase tracking-wider text-whitex-faint">
               <th className="px-5 py-3 font-medium">Name</th>
               <th className="px-5 py-3 font-medium">Username</th>
               <th className="px-5 py-3 font-medium">Email</th>
@@ -66,8 +66,12 @@ export function UserTable({
               <th className="px-5 py-3 text-right font-medium">XP</th>
               <th className="px-5 py-3 text-right font-medium">Level</th>
               <th className="px-5 py-3 font-medium">Last Active</th>
-              <th className="px-5 py-3 text-right font-medium">Report</th>
-              <th className="w-12 px-5 py-3 text-right font-medium">{''}</th>
+              {/* Sticky-right column for actions so admins can edit /
+                  reset / suspend / view report without horizontally
+                  scrolling on narrower viewports. */}
+              <th className="sticky right-0 z-10 bg-midnight-elevated/95 px-5 py-3 text-right font-medium shadow-[-12px_0_24px_-12px_rgba(0,0,0,0.6)] backdrop-blur">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -101,17 +105,17 @@ export function UserTable({
                 <td className="px-5 py-3 text-caption text-whitex-muted">
                   {formatRel(u.last_quiz_date || u.updated_at)}
                 </td>
-                <td className="px-5 py-3 text-right">
-                  <Link
-                    href={`/admin/users/${u.id}`}
-                    className="inline-flex items-center gap-1 rounded-md border border-midnight-line bg-midnight-base px-2.5 py-1 text-micro font-semibold text-whitex-soft hover:bg-midnight-line hover:text-white"
-                  >
-                    <Eye className="h-3 w-3" />
-                    View report
-                  </Link>
-                </td>
-                <td className="px-5 py-3 text-right">
-                  <UserRowActions user={u} onChange={onChange} />
+                <td className="sticky right-0 z-10 bg-midnight-elevated/95 px-5 py-3 backdrop-blur shadow-[-12px_0_24px_-12px_rgba(0,0,0,0.6)]">
+                  <div className="flex items-center justify-end gap-1.5">
+                    <Link
+                      href={`/admin/users/${u.id}`}
+                      className="inline-flex items-center gap-1 rounded-md border border-midnight-line bg-midnight-base px-2.5 py-1 text-micro font-semibold text-whitex-soft hover:bg-midnight-line hover:text-white"
+                    >
+                      <Eye className="h-3 w-3" />
+                      Report
+                    </Link>
+                    <UserRowActions user={u} onChange={onChange} />
+                  </div>
                 </td>
               </tr>
             ))}
