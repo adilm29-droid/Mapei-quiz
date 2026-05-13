@@ -83,6 +83,16 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     letterSpacing: 0.5,
   },
+  skippedPill: {
+    backgroundColor: '#FEF3C7',
+    color: '#92400E',
+    fontSize: 7,
+    fontWeight: 'bold',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 3,
+    letterSpacing: 0.5,
+  },
   qText: { fontSize: 10, fontWeight: 'bold', color: '#0F172A', lineHeight: 1.4, marginBottom: 6 },
   qMeta: { fontSize: 8, color: '#94A3B8', marginBottom: 4 },
 
@@ -125,6 +135,18 @@ const styles = StyleSheet.create({
 const LETTERS = ['A', 'B', 'C', 'D'] as const
 
 export function AdminReport(props: AdminReportProps) {
+  // Three states per question:
+  //   correct  — user_answer === correct_answer
+  //   wrong    — user_answer is set AND !== correct_answer
+  //   skipped  — user_answer is null/undefined (left blank)
+  // Both wrong + skipped count toward the "missed" total; the score
+  // itself is correct_count (post-migration-009: 1 mark per question).
+  const wrongPicks = props.questions.filter(
+    q => !!q.user_answer && q.user_answer !== q.correct_answer,
+  ).length
+  const skipped = props.questions.filter(q => !q.user_answer).length
+  const missed = wrongPicks + skipped
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -146,6 +168,12 @@ export function AdminReport(props: AdminReportProps) {
             <View style={styles.metaCell}>
               <Text style={styles.metaLabel}>Score</Text>
               <Text style={styles.metaValue}>{props.finalScore} / {props.maxScore} ({props.percent.toFixed(1)}%)</Text>
+            </View>
+            <View style={styles.metaCell}>
+              <Text style={styles.metaLabel}>Missed</Text>
+              <Text style={styles.metaValue}>
+                {missed} total ({wrongPicks} wrong + {skipped} skipped)
+              </Text>
             </View>
             <View style={styles.metaCell}>
               <Text style={styles.metaLabel}>Time taken</Text>
@@ -177,12 +205,17 @@ export function AdminReport(props: AdminReportProps) {
 
           {props.questions.map((q, i) => {
             const opts = [q.option_a, q.option_b, q.option_c, q.option_d]
-            const wrong = q.user_answer && q.user_answer !== q.correct_answer
+            const isWrong = !!q.user_answer && q.user_answer !== q.correct_answer
+            const isSkipped = !q.user_answer
             return (
               <View key={i} style={styles.questionBlock} wrap={false}>
                 <View style={styles.qHeader}>
                   <Text style={styles.qNum}>Q{i + 1}</Text>
-                  {wrong ? <Text style={styles.wrongPill}>WRONG ANSWER</Text> : null}
+                  {isWrong ? (
+                    <Text style={styles.wrongPill}>WRONG ANSWER</Text>
+                  ) : isSkipped ? (
+                    <Text style={styles.skippedPill}>SKIPPED</Text>
+                  ) : null}
                 </View>
                 <Text style={styles.qText}>{q.question_text}</Text>
                 {q.time_taken_seconds != null ? (

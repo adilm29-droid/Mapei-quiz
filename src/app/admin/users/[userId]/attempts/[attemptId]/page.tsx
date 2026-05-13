@@ -57,7 +57,13 @@ export default async function AdminAttemptDetail({
   const fullName =
     [user.first_name, user.last_name].filter(Boolean).join(' ') || `@${user.username}`
 
-  const wrong = ordered.filter((q: any) => answers[q.id] !== q.correct_answer)
+  // "Missed" = anything not correct. Split into wrong-picks vs skipped
+  // so admins can see what actually happened. Both count toward the
+  // wrong total displayed in the header.
+  const missed = ordered.filter((q: any) => answers[q.id] !== q.correct_answer)
+  const wrongPicks = missed.filter((q: any) => !!answers[q.id]).length
+  const skippedCount = missed.length - wrongPicks
+  const wrong = missed
 
   return (
     <div className="min-h-screen pb-12">
@@ -93,10 +99,15 @@ export default async function AdminAttemptDetail({
             <span className="text-whitex-muted">({pct}%)</span>
           </span>
           <span>
-            <span className="text-whitex-faint">Wrong:</span>{' '}
+            <span className="text-whitex-faint">Missed:</span>{' '}
             <span className={wrong.length === 0 ? 'text-emerald-300' : 'text-rose-300'}>
               {wrong.length}
             </span>
+            {wrong.length > 0 && (
+              <span className="ml-1 text-whitex-faint">
+                ({wrongPicks} wrong · {skippedCount} skipped)
+              </span>
+            )}
           </span>
         </section>
 
@@ -128,6 +139,7 @@ export default async function AdminAttemptDetail({
           ) : (
             wrong.map((q: any, i: number) => {
               const pick = answers[q.id]
+              const isSkipped = !pick
               const opts: { letter: 'A' | 'B' | 'C' | 'D'; text: string }[] = [
                 { letter: 'A', text: q.option_a },
                 { letter: 'B', text: q.option_b },
@@ -137,10 +149,18 @@ export default async function AdminAttemptDetail({
               return (
                 <article
                   key={q.id}
-                  className="rounded-2xl border border-rose-400/30 bg-rose-500/5 p-4"
+                  className={`rounded-2xl border p-4 ${
+                    isSkipped
+                      ? 'border-amber-400/30 bg-amber-500/5'
+                      : 'border-rose-400/30 bg-rose-500/5'
+                  }`}
                 >
-                  <div className="text-micro uppercase tracking-wider text-rose-300">
-                    Wrong · Q{i + 1}
+                  <div
+                    className={`text-micro uppercase tracking-wider ${
+                      isSkipped ? 'text-amber-300' : 'text-rose-300'
+                    }`}
+                  >
+                    {isSkipped ? 'Skipped' : 'Wrong'} · Q{i + 1}
                   </div>
                   <p className="mt-2 text-body font-semibold text-white">
                     {q.question_text}
