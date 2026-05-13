@@ -6,9 +6,12 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { Avatar } from '@/components/avatar/avatar'
 import { Badge } from '@/components/ui/badge'
 import { LEADERBOARD_TOPPER_IMAGE } from '@/lib/achievements/badge-images'
+import { assignMedalsByScoreTier } from '@/lib/reports/master-report'
 import { LeaderboardAutoRefresh } from './_components/auto-refresh'
 
 export const dynamic = 'force-dynamic'
+
+type Medal = 'gold' | 'silver' | 'bronze' | null
 
 interface RowItem {
   rank: number
@@ -20,6 +23,15 @@ interface RowItem {
   score: number
   isMe: boolean
   isChampion: boolean
+  medal: Medal
+}
+
+interface QuizSection {
+  quizId: string
+  weekNumber: number | null
+  title: string
+  maxScore: number
+  rows: RowItem[]
 }
 
 export default async function LeaderboardPage({
@@ -30,58 +42,80 @@ export default async function LeaderboardPage({
   const session = await getSession()
   if (!session) redirect('/signin')
   const sp = await searchParams
-  const scope: 'quiz' | 'all-time' = sp.scope === 'all-time' ? 'all-time' : 'quiz'
+  const scope: 'by-quiz' | 'all-time' = sp.scope === 'all-time' ? 'all-time' : 'by-quiz'
 
   const supabase = getSupabaseAdmin()
 
-  // ── Latest unlocked quiz (display ungated — per 2026-05-12 change the
-  // podium / leaderboard show whenever ≥1 staff has completed) ────────
-  const { data: latestQuiz } = await supabase
-    .from('quizzes')
-    .select('id, title, week_number, max_score, leaderboard_visible')
-    .eq('is_unlocked', true)
-    .is('deleted_at', null)
-    .order('week_number', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  let quizSections: QuizSection[] = []
+  let allTimeRows: RowItem[] = []
 
-  let rows: RowItem[] = []
-  let title = ''
-  let maxScore = 0
-
-  if (scope === 'quiz' && latestQuiz) {
-    title = latestQuiz.title
-    maxScore = latestQuiz.max_score ?? 0
-
-    const { data: attempts } = await supabase
-      .from('attempts')
-      .select('user_id, final_score, submitted_at, users!inner(id, username, first_name, last_name, title)')
-      .eq('quiz_id', latestQuiz.id)
-      .eq('is_leaderboard_attempt', true)
+  if (scope === 'by-quiz') {
+    // Every actual quiz the staff have engaged with. Per Tarun 2026-05-13
+    // the leaderboard exposes every quiz's full standings, not just the
+    // latest one — and the quiz number/title is visible per section.
+    const { data: quizzes } = await supabase
+      .from('quizzes')
+      .select('id, title, week_number, max_score, type, deleted_at, is_unlocked')
+      .eq('type', 'actual')
       .is('deleted_at', null)
-      .order('final_score', { ascending: false })
-      .order('submitted_at', { ascending: true })
+      .order('week_number', { ascending: false })
 
-    rows = (attempts ?? []).map((a: any, i: number) => ({
-      rank: i + 1,
-      userId: a.users.id,
-      username: a.users.username,
-      first_name: a.users.first_name,
-      last_name: a.users.last_name,
-      title: a.users.title,
-      score: a.final_score ?? 0,
-      isMe: a.users.id === session.userId,
-      isChampion: i === 0,
-    }))
+    const quizIds = (quizzes ?? []).map(q => q.id)
+    const { data: rawAttempts } = quizIds.length
+      ? await supabase
+          .from('attempts')
+          .select(
+            'quiz_id, user_id, final_score, submitted_at, ' +
+              'users!inner(id, username, first_name, last_name, title)',
+          )
+          .in('quiz_id', quizIds)
+          .eq('is_leaderboard_attempt', true)
+          .is('deleted_at', null)
+      : { data: [] as any[] }
+
+    const attempts = (rawAttempts ?? []) as any[]
+    for (const q of quizzes ?? []) {
+      const forQuiz = attempts
+        .filter(a => a.quiz_id === q.id)
+        .sort((a, b) => {
+          const sa = a.final_score ?? 0
+          const sb = b.final_score ?? 0
+          if (sb !== sa) return sb - sa
+          return (a.submitted_at ?? '').localeCompare(b.submitted_at ?? '')
+        })
+      const baseRows: RowItem[] = forQuiz.map((a: any, i: number) => ({
+        rank: i + 1,
+        userId: a.users.id,
+        username: a.users.username,
+        first_name: a.users.first_name,
+        last_name: a.users.last_name,
+        title: a.users.title,
+        score: a.final_score ?? 0,
+        isMe: a.users.id === session.userId,
+        isChampion: false,
+        medal: null,
+      }))
+      const withMedals = assignMedalsByScoreTier(baseRows).map(r => ({
+        ...r,
+        medal: r.score > 0 ? r.medal : null,
+        isChampion: r.score > 0 && r.medal === 'gold',
+      })) as RowItem[]
+      quizSections.push({
+        quizId: q.id,
+        weekNumber: q.week_number ?? null,
+        title: q.title,
+        maxScore: q.max_score ?? 0,
+        rows: withMedals,
+      })
+    }
   } else {
-    title = 'All-Time XP'
     const { data: users } = await supabase
       .from('users')
       .select('id, username, first_name, last_name, title, xp')
       .eq('status', 'approved')
       .order('xp', { ascending: false })
 
-    rows = (users ?? []).map((u: any, i: number) => ({
+    const base: RowItem[] = (users ?? []).map((u: any, i: number) => ({
       rank: i + 1,
       userId: u.id,
       username: u.username,
@@ -90,15 +124,15 @@ export default async function LeaderboardPage({
       title: u.title,
       score: u.xp ?? 0,
       isMe: u.id === session.userId,
-      isChampion: i === 0,
+      isChampion: false,
+      medal: null,
     }))
+    allTimeRows = assignMedalsByScoreTier(base).map(r => ({
+      ...r,
+      medal: r.score > 0 ? r.medal : null,
+      isChampion: r.score > 0 && r.medal === 'gold',
+    })) as RowItem[]
   }
-
-  // For the inline score bar we normalize to the highest score on the
-  // board (so #1's bar is always full). For per-quiz scope this is
-  // effectively the quiz's max_score because #1's score caps at that.
-  const peak = rows.length > 0 ? rows[0].score : 1
-  const scaleDenom = scope === 'quiz' && maxScore > 0 ? maxScore : Math.max(peak, 1)
 
   return (
     <div className="min-h-screen pb-12">
@@ -117,14 +151,14 @@ export default async function LeaderboardPage({
         </div>
         <div className="mx-auto flex max-w-3xl items-center gap-2 px-5 pb-4">
           <Link
-            href="/leaderboard?scope=quiz"
+            href="/leaderboard?scope=by-quiz"
             className={
-              scope === 'quiz'
+              scope === 'by-quiz'
                 ? 'rounded-lg bg-midnight-elevated px-4 py-1.5 text-caption font-medium text-white shadow-sm'
                 : 'rounded-lg px-4 py-1.5 text-caption text-whitex-muted hover:text-whitex-soft'
             }
           >
-            This Quiz
+            By Quiz
           </Link>
           <Link
             href="/leaderboard?scope=all-time"
@@ -139,34 +173,68 @@ export default async function LeaderboardPage({
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl space-y-2 px-5 py-6">
+      <main className="mx-auto max-w-3xl space-y-8 px-5 py-6">
         <LeaderboardAutoRefresh />
-        <div className="mb-3 flex items-baseline justify-between">
-          <h1 className="text-caption text-whitex-muted">{title}</h1>
-          {scope === 'quiz' && maxScore > 0 && (
-            <span className="font-mono text-micro tabular text-whitex-faint">
-              out of {maxScore}
-            </span>
-          )}
-        </div>
 
-        {rows.length === 0 ? (
-          <div className="rounded-2xl border border-midnight-line bg-midnight-elevated/40 p-8 text-center text-caption text-whitex-muted backdrop-blur">
-            {scope === 'quiz'
-              ? 'Be the first to complete this week’s quiz — the board fills up as staff finish.'
-              : 'No data yet for this scope.'}
-          </div>
+        {scope === 'by-quiz' ? (
+          quizSections.length === 0 ? (
+            <EmptyState message="No quizzes published yet." />
+          ) : (
+            quizSections.map(q => (
+              <section key={q.quizId} className="space-y-2">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h2 className="text-h3 font-semibold text-white">
+                    {q.weekNumber !== null ? `Week ${q.weekNumber} · ` : ''}
+                    {q.title}
+                  </h2>
+                  <span className="font-mono text-micro tabular text-whitex-faint">
+                    out of {q.maxScore}
+                  </span>
+                </div>
+                {q.rows.length === 0 ? (
+                  <EmptyState message="No one has completed this quiz yet." />
+                ) : (
+                  q.rows.map(r => (
+                    <Row
+                      key={`${q.quizId}:${r.userId}`}
+                      row={r}
+                      scaleDenom={q.maxScore || 1}
+                      showOutOf={q.maxScore}
+                    />
+                  ))
+                )}
+              </section>
+            ))
+          )
         ) : (
-          rows.map(r => (
-            <Row
-              key={r.userId}
-              row={r}
-              scaleDenom={scaleDenom}
-              showOutOf={scope === 'quiz' ? maxScore : 0}
-            />
-          ))
+          <section className="space-y-2">
+            <h2 className="text-caption text-whitex-muted">All-Time XP</h2>
+            {allTimeRows.length === 0 ? (
+              <EmptyState message="No data yet." />
+            ) : (
+              allTimeRows.map(r => {
+                const peak = allTimeRows[0]?.score ?? 1
+                return (
+                  <Row
+                    key={r.userId}
+                    row={r}
+                    scaleDenom={Math.max(peak, 1)}
+                    showOutOf={0}
+                  />
+                )
+              })
+            )}
+          </section>
         )}
       </main>
+    </div>
+  )
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="rounded-2xl border border-midnight-line bg-midnight-elevated/40 p-6 text-center text-caption text-whitex-muted backdrop-blur">
+      {message}
     </div>
   )
 }
@@ -182,24 +250,23 @@ function Row({
 }) {
   const widthPct = scaleDenom > 0 ? Math.min(100, (row.score / scaleDenom) * 100) : 0
   const barClass =
-    row.rank === 1
+    row.medal === 'gold'
       ? 'bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-500'
-      : row.rank === 2
+      : row.medal === 'silver'
       ? 'bg-gradient-to-r from-slate-300 to-slate-500'
-      : row.rank === 3
+      : row.medal === 'bronze'
       ? 'bg-gradient-to-r from-amber-700 to-amber-900'
       : 'bg-gradient-to-r from-aurora-from to-aurora-to'
   return (
     <div
       className={`relative overflow-hidden rounded-2xl border backdrop-blur ${
-        row.rank === 1
+        row.medal === 'gold'
           ? 'border-amber-400/40 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent shadow-glow-soft'
           : row.isMe
           ? 'border-info/40 bg-info/5'
           : 'border-midnight-line bg-midnight-elevated/40'
       }`}
     >
-      {/* Score bar — sits behind the row content, width proportional to score */}
       <div
         aria-hidden
         className={`absolute inset-y-0 left-0 opacity-15 ${barClass}`}
@@ -207,20 +274,20 @@ function Row({
       />
 
       <div className="relative flex items-center gap-4 px-4 py-3">
-        {row.rank === 1 ? (
+        {row.medal === 'gold' ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={LEADERBOARD_TOPPER_IMAGE}
             alt="Leaderboard Topper"
-            title="Leaderboard Topper · 1st Place"
+            title="Gold tier · top score"
             className="h-12 w-12 shrink-0 object-contain drop-shadow"
           />
         ) : (
           <span
             className={
-              row.rank <= 3
-                ? `flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-${
-                    row.rank === 2 ? 'silver' : 'bronze'
+              row.medal
+                ? `flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-${
+                    row.medal === 'silver' ? 'silver' : 'bronze'
                   } text-h3 font-bold text-white shadow-sm`
                 : 'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-midnight-line text-caption font-bold text-whitex-muted tabular'
             }
@@ -243,6 +310,19 @@ function Row({
               <Badge tone="info" className="ml-2">
                 You
               </Badge>
+            )}
+            {row.medal && (
+              <span
+                className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-micro font-bold uppercase tracking-wider ${
+                  row.medal === 'gold'
+                    ? 'bg-amber-400/20 text-amber-200 ring-1 ring-amber-400/40'
+                    : row.medal === 'silver'
+                    ? 'bg-slate-400/20 text-slate-200 ring-1 ring-slate-400/40'
+                    : 'bg-amber-700/30 text-amber-200 ring-1 ring-amber-700/50'
+                }`}
+              >
+                {row.medal}
+              </span>
             )}
           </p>
           <p className="truncate text-caption text-whitex-muted">{row.title}</p>

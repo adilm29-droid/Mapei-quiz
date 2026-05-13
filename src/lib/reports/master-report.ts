@@ -53,11 +53,37 @@ export interface MasterReportData {
   totals: MasterTotalRow[]
 }
 
-function medalFor(rank: number): MasterRow['medal'] {
-  if (rank === 1) return 'gold'
-  if (rank === 2) return 'silver'
-  if (rank === 3) return 'bronze'
-  return null
+/**
+ * Tier-based medal allocation. Per Tarun 2026-05-13: medals are TIERS,
+ * not positions — every user at the top distinct score gets gold,
+ * every user at the second distinct score gets silver, every user at
+ * the third gets bronze. So if seven people tie at the top, all seven
+ * are gold and there's no silver until someone scores strictly less.
+ *
+ * Expects `rows` to be pre-sorted by score descending (any tie-break
+ * field already applied for stable display order — the tie-break
+ * only affects which rank-number a user gets, not which medal).
+ */
+export function assignMedalsByScoreTier<
+  T extends { score: number; medal: 'gold' | 'silver' | 'bronze' | null },
+>(rows: T[]): T[] {
+  let lastScore: number | null = null
+  let distinctTier = -1
+  return rows.map(r => {
+    if (lastScore === null || r.score !== lastScore) {
+      distinctTier += 1
+      lastScore = r.score
+    }
+    const medal: 'gold' | 'silver' | 'bronze' | null =
+      distinctTier === 0
+        ? 'gold'
+        : distinctTier === 1
+        ? 'silver'
+        : distinctTier === 2
+        ? 'bronze'
+        : null
+    return { ...r, medal }
+  })
 }
 
 function displayName(u: {
@@ -108,7 +134,7 @@ export async function assembleMasterReport(
         return (a.submitted_at ?? '').localeCompare(b.submitted_at ?? '')
       })
 
-    const rows: MasterRow[] = forQuiz.map((a, i) => {
+    const rowsNoMedal: MasterRow[] = forQuiz.map((a, i) => {
       const score = a.final_score ?? 0
       const max = q.max_score ?? 0
       const rank = i + 1
@@ -120,10 +146,11 @@ export async function assembleMasterReport(
         maxScore: max,
         wrong: Math.max(0, max - score),
         rank,
-        medal: medalFor(rank),
+        medal: null,
         submittedAt: a.submitted_at ?? null,
       }
     })
+    const rows = assignMedalsByScoreTier(rowsNoMedal)
 
     return {
       quizId: q.id,
@@ -160,7 +187,7 @@ export async function assembleMasterReport(
     }
   }
 
-  const totals: MasterTotalRow[] = Array.from(totalsByUser.values())
+  const totalsSorted = Array.from(totalsByUser.values())
     .map(v => ({
       userId: v.user.id,
       userName: displayName(v.user),
@@ -169,18 +196,30 @@ export async function assembleMasterReport(
       totalMax: v.max,
       quizzesAttempted: v.quizzes.size,
       rank: 0,
-      medal: null,
+      medal: null as 'gold' | 'silver' | 'bronze' | null,
     }))
     .sort((a, b) => {
       if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore
-      // tie-breaker: more quizzes attempted ranks higher
+      // tie-breaker: more quizzes attempted ranks higher (affects rank
+      // number only — medal tier is by totalScore equivalence below)
       return b.quizzesAttempted - a.quizzesAttempted
     })
-    .map((t, i) => ({
-      ...t,
-      rank: i + 1,
-      medal: medalFor(i + 1),
-    }))
+    .map((t, i) => ({ ...t, rank: i + 1 }))
+
+  // Tier-based medals — the helper expects a `score` field, so adapt.
+  const totalsWithMedals = assignMedalsByScoreTier(
+    totalsSorted.map(t => ({ ...t, score: t.totalScore })),
+  )
+  const totals: MasterTotalRow[] = totalsWithMedals.map(t => ({
+    userId: t.userId,
+    userName: t.userName,
+    username: t.username,
+    totalScore: t.totalScore,
+    totalMax: t.totalMax,
+    quizzesAttempted: t.quizzesAttempted,
+    rank: t.rank,
+    medal: t.medal,
+  }))
 
   return {
     generatedAt: new Date(),
