@@ -3,6 +3,7 @@ import * as React from 'react'
 import { UserReport, type UserReportProps } from './UserReport'
 import { AdminReport, type AdminReportProps } from './AdminReport'
 import { MistakesReport, type MistakesReportProps } from './MistakesReport'
+import { MasterReport, type MasterReportPdfProps } from './MasterReport'
 import { formatUaeDateTime, formatDuration } from '@/lib/utils/timezone'
 import type { SupabaseAdmin } from '@/lib/supabase-admin'
 
@@ -19,6 +20,11 @@ export async function renderAdminReport(props: AdminReportProps): Promise<Buffer
 /** Renders the user mistakes / study-companion PDF. */
 export async function renderMistakesReport(props: MistakesReportProps): Promise<Buffer> {
   return await renderToBuffer(React.createElement(MistakesReport, props) as any)
+}
+
+/** Renders the admin Master Report PDF (every staff member × every quiz). */
+export async function renderMasterReport(props: MasterReportPdfProps): Promise<Buffer> {
+  return await renderToBuffer(React.createElement(MasterReport, props) as any)
 }
 
 /**
