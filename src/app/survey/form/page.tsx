@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { SURVEYS, SCALE, normaliseName, type SurveyType } from '@/lib/hr-survey'
+
+// three.js mascot loads after the form, client-only
+const Mascot = dynamic(() => import('../_components/Mascot'), { ssr: false })
 
 const EMPTY: number[] = Array(10).fill(0)
 type Step = 'type' | 'who' | 'questions' | 'done'
@@ -21,6 +25,8 @@ export default function SurveyForm() {
   const [busy, setBusy] = useState(false)
   const [known, setKnown] = useState<{ names: string[]; depts: string[] }>({ names: [], depts: [] })
   const [result, setResult] = useState<{ total: number; kpi: number } | null>(null)
+  const [mood, setMood] = useState(0)
+  const [cheer, setCheer] = useState(0)
 
   useEffect(() => {
     fetch('/api/survey/names')
@@ -41,6 +47,8 @@ export default function SurveyForm() {
   const answered = answers.filter(Boolean).length
 
   function pick(t: SurveyType) {
+    setMood(4)
+    setCheer(c => c + 1)
     setType(t)
     setError('')
     setStep('who')
@@ -59,6 +67,8 @@ export default function SurveyForm() {
   }
 
   function setAnswer(i: number, v: number) {
+    setMood(v)
+    setCheer(c => c + 1)
     setAnswers(a => {
       const n = [...a]
       n[i] = v
@@ -100,6 +110,7 @@ export default function SurveyForm() {
     setTried(false)
     setError('')
     setResult(null)
+    setMood(0)
     setStep('type')
   }
 
@@ -114,7 +125,8 @@ export default function SurveyForm() {
   if (!me) return null
 
   return (
-    <main className="hr-shell">
+    <main className="hr-shell hr-with-pank">
+      <Mascot mood={mood} cheer={cheer} celebrate={step === 'done'} />
       <div className="hr-brand" style={{ justifyContent: 'space-between' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span className="hr-brand-dot" aria-hidden="true" />
@@ -294,7 +306,7 @@ export default function SurveyForm() {
             Your feedback for <strong style={{ color: 'var(--hr-ink)' }}>{assessed}</strong> has been recorded.
           </p>
           {type === 'A' ? (
-            <p className="hr-help">Your individual answers are not shown to your manager.</p>
+            <p className="hr-help">Your feedback is confidential. Your manager will never see your name or your answers.</p>
           ) : (
             result && (
               <p className="hr-help">

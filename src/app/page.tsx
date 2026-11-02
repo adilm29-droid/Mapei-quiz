@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { LoadingScreen } from '@/components/loading-screen'
 import { LogoFull } from '@/components/brand/LogoFull'
 import { AuthForm } from '@/components/auth/AuthForm'
+import { HrSurveyButton } from '@/components/auth/HrSurveyButton'
 
 interface Beam {
   x: number
@@ -200,7 +201,7 @@ export default function Home() {
               animate={{ x: '0%', opacity: 1 }}
               exit={{ x: '-100%', opacity: 0 }}
               transition={{ type: 'spring', stiffness: 90, damping: 22, mass: 0.8 }}
-              className="absolute inset-y-0 left-0 z-30 flex w-full items-center justify-center overflow-y-auto px-6 py-20 backdrop-blur-xl md:w-1/2 md:py-10"
+              className="absolute inset-y-0 left-0 z-30 flex w-full flex-col items-center justify-center gap-8 overflow-y-auto px-6 py-20 backdrop-blur-xl md:w-1/2 md:py-10"
               style={{
                 background:
                   'linear-gradient(135deg, rgba(5,11,31,0.92) 0%, rgba(7,18,46,0.88) 50%, rgba(10,23,64,0.82) 100%)',
@@ -208,12 +209,7 @@ export default function Home() {
               }}
             >
               <AuthForm />
-              <a
-                href="/survey"
-                className="absolute bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.25em] text-[#D8C8F5]/80 underline-offset-4 transition-colors hover:text-white hover:underline"
-              >
-                HR Feedback Survey →
-              </a>
+              <HrSurveyButton className="shrink-0" />
             </motion.aside>
           )}
         </AnimatePresence>

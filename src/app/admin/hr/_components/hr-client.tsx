@@ -35,18 +35,90 @@ const PANEL = 'rounded-2xl border border-midnight-line bg-midnight-elevated/40'
 
 const avg = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0)
 const kpiClass = (k: number) => (k >= 80 ? 'text-success' : k >= 60 ? 'text-warning' : 'text-danger')
-const csvCell = (v: unknown) => {
-  const s = v == null ? '' : String(v)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-}
+const SCALE_WORD = ['', 'Very Poor', 'Poor', 'Satisfactory', 'Good', 'Excellent']
 
-function download(name: string, rows: unknown[][]) {
-  const blob = new Blob(['﻿' + rows.map(r => r.map(csvCell).join(',')).join('\n')], {
-    type: 'text/csv;charset=utf-8',
-  })
+/** Excel workbook for one period: a Summary and a Responses sheet per survey, full question text as headers. */
+async function downloadWorkbook(period: string, rows: HrRow[]) {
+  const ExcelJS = (await import('exceljs')).default
+  const wb = new ExcelJS.Workbook()
+  wb.creator = 'LapizBlue HR'
+
+  const styleHeader = (ws: any) => {
+    const h = ws.getRow(1)
+    h.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    h.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6D4FB3' } }
+    h.alignment = { wrapText: true, vertical: 'middle' }
+    h.height = 64
+    ws.views = [{ state: 'frozen', ySplit: 1 }]
+  }
+
+  for (const type of ['A', 'B'] as const) {
+    const list = rows.filter(r => r.survey_type === type)
+    if (!list.length) continue
+    const qs = SURVEYS[type].questions
+    const tag = type === 'A' ? 'A Staff→Manager' : 'B Manager→Staff'
+
+    // Summary: one row per person assessed
+    const sum = wb.addWorksheet(`${tag} Summary`)
+    sum.columns = [
+      { header: 'Person assessed', width: 22 },
+      { header: 'Department', width: 16 },
+      { header: 'Responses', width: 11 },
+      { header: 'KPI score /100 (average)', width: 14 },
+      ...qs.map((q, i) => ({ header: `Q${i + 1}. ${q} (avg /5)`, width: 30 })),
+      { header: 'Rated by', width: 40 },
+    ]
+    const byPerson = new Map<string, HrRow[]>()
+    for (const r of list) {
+      const k = r.assessed_name.toLowerCase()
+      byPerson.set(k, [...(byPerson.get(k) ?? []), r])
+    }
+    for (const g of [...byPerson.values()].sort((a, b) => a[0].assessed_name.localeCompare(b[0].assessed_name))) {
+      sum.addRow([
+        g[0].assessed_name,
+        [...new Set(g.map(r => r.department).filter(Boolean))].join(', '),
+        g.length,
+        Math.round(avg(g.map(r => r.kpi_score))),
+        ...qs.map((_, i) => Number(avg(g.map(r => r.answers[i])).toFixed(2))),
+        g.map(r => `${r.respondent_name} <${r.respondent_email}>`).join('; '),
+      ])
+    }
+    styleHeader(sum)
+
+    // Responses: one row per submission
+    const res = wb.addWorksheet(`${tag} Responses`)
+    res.columns = [
+      { header: 'Submitted', width: 18 },
+      { header: 'Respondent name', width: 20 },
+      { header: 'Respondent email', width: 26 },
+      { header: 'Person assessed', width: 20 },
+      { header: 'Department', width: 16 },
+      ...qs.map((q, i) => ({ header: `Q${i + 1}. ${q}`, width: 30 })),
+      { header: 'Total /50', width: 10 },
+      { header: 'KPI /100', width: 10 },
+      { header: 'Comment', width: 40 },
+    ]
+    for (const r of list) {
+      res.addRow([
+        new Date(r.created_at).toLocaleString('en-GB'),
+        r.respondent_name + (r.is_admin ? ' (admin)' : ''),
+        r.respondent_email,
+        r.assessed_name,
+        r.department ?? '',
+        ...r.answers.map(a => `${a} – ${SCALE_WORD[a]}`),
+        r.total,
+        r.kpi_score,
+        r.comment ?? '',
+      ])
+    }
+    styleHeader(res)
+  }
+
+  if (!wb.worksheets.length) wb.addWorksheet('No responses')
+  const buf = await wb.xlsx.writeBuffer()
   const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = name
+  a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+  a.download = `hr-survey-${period}.xlsx`
   a.click()
   setTimeout(() => URL.revokeObjectURL(a.href), 1000)
 }
@@ -91,32 +163,13 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [filtered])
 
-  function exportReport() {
-    const qs = SURVEYS[type].questions.map((_, i) => `Q${i + 1} avg`)
-    const out: unknown[][] = [
-      ['Period', 'Survey', 'Person assessed', 'Department', 'Responses', 'KPI score /100', ...qs, ...(type === 'B' ? ['Rated by'] : [])],
-    ]
-    for (const g of groups) {
-      out.push([
-        periodLabel(period),
-        type,
-        g.name,
-        g.dept,
-        g.list.length,
-        g.kpi,
-        ...g.perQ.map(v => v.toFixed(2)),
-        ...(type === 'B' ? [g.list.map(r => r.respondent_name).join('; ')] : []),
-      ])
+  async function exportWorkbook() {
+    if (!inPeriod.length) return toast.error(`No responses in ${periodLabel(period)} to export`)
+    try {
+      await downloadWorkbook(period, inPeriod)
+    } catch {
+      toast.error('Export failed, please try again')
     }
-    download(`hr-survey-${type}-${period}.csv`, out)
-  }
-
-  function exportCompletions() {
-    const out: unknown[][] = [['Date', 'Period', 'Survey', 'Respondent', 'Email', 'Person assessed', 'Department']]
-    for (const r of inPeriod) {
-      out.push([new Date(r.created_at).toLocaleString('en-GB'), r.period, r.survey_type, r.respondent_name, r.respondent_email, r.assessed_name, r.department || ''])
-    }
-    download(`hr-survey-completions-${period}.csv`, out)
   }
 
   async function savePasscode() {
@@ -202,7 +255,7 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
                     setOpen(null)
                   }}
                 >
-                  <option value="A">A · Staff rating HOD (anonymous)</option>
+                  <option value="A">A · Staff rating HOD</option>
                   <option value="B">B · HOD rating staff</option>
                 </select>
               </div>
@@ -230,8 +283,8 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
               <div className="text-body font-semibold text-white">
                 KPI scores · {groups.length} {groups.length === 1 ? 'person' : 'people'}
               </div>
-              <Button variant="ghost" size="sm" onClick={exportReport}>
-                <Download className="mr-1.5 h-3.5 w-3.5" /> Export CSV
+              <Button variant="ghost" size="sm" onClick={exportWorkbook}>
+                <Download className="mr-1.5 h-3.5 w-3.5" /> Export Excel
               </Button>
             </div>
             <div className="overflow-x-auto">
@@ -277,16 +330,17 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
                       {open === g.name && (
                         <tr className="border-b border-midnight-line/60 bg-midnight-deepest/40">
                           <td colSpan={15} className="px-5 py-4 text-caption">
-                            {type === 'B' ? (
-                              <div className="mb-3 text-whitex-soft">
-                                <span className="text-whitex-faint">Rated by:</span>{' '}
-                                {g.list.map(r => `${r.respondent_name} (${r.kpi_score})`).join(', ')}
-                              </div>
-                            ) : (
-                              <div className="mb-3 text-whitex-muted">
-                                Individual KPI scores: {g.list.map(r => r.kpi_score).sort((a, b) => b - a).join(', ')} · respondent names are hidden for anonymity
-                              </div>
-                            )}
+                            <div className="mb-2 text-micro uppercase tracking-wider text-whitex-faint">Rated by</div>
+                            <div className="mb-4 grid gap-1">
+                              {g.list.map(r => (
+                                <div key={r.id} className="flex flex-wrap items-baseline gap-x-3 text-whitex-soft">
+                                  <span className="font-medium">{r.respondent_name}</span>
+                                  <span className="text-micro text-whitex-faint">{r.respondent_email}</span>
+                                  <span className={cn('font-mono', kpiClass(r.kpi_score))}>{r.kpi_score}</span>
+                                  {r.is_admin && <Badge tone="gold">Admin</Badge>}
+                                </div>
+                              ))}
+                            </div>
                             <div className="mb-2 text-micro uppercase tracking-wider text-whitex-faint">Comments</div>
                             {g.list.filter(r => r.comment).length === 0 ? (
                               <div className="text-whitex-muted">No comments.</div>
@@ -296,7 +350,7 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
                                 .map(r => (
                                   <div key={r.id} className="mb-2 rounded-md border-l-2 border-glow bg-glow/5 px-3 py-2 text-whitex-soft">
                                     {r.comment}
-                                    {type === 'B' && <div className="mt-1 text-micro text-whitex-faint">— {r.respondent_name}</div>}
+                                    <div className="mt-1 text-micro text-whitex-faint">— {r.respondent_name}</div>
                                   </div>
                                 ))
                             )}
@@ -308,6 +362,13 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
                 </tbody>
               </table>
             </div>
+            <ol className="grid gap-1 border-t border-midnight-line px-5 py-4 text-caption text-whitex-muted md:grid-cols-2">
+              {SURVEYS[type].questions.map((q, i) => (
+                <li key={i}>
+                  <span className="font-mono text-whitex-faint">Q{i + 1}</span> {q}
+                </li>
+              ))}
+            </ol>
           </div>
         ))}
 
@@ -316,10 +377,10 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-midnight-line px-5 py-3">
             <div>
               <div className="text-body font-semibold text-white">Who has submitted · {inPeriod.length}</div>
-              <div className="text-micro text-whitex-faint">Admin only. Do not share Survey A rows with the managers being rated.</div>
+              <div className="text-micro text-whitex-faint">Admin only. Staff are told managers never see who said what — keep it that way.</div>
             </div>
-            <Button variant="ghost" size="sm" onClick={exportCompletions}>
-              <Download className="mr-1.5 h-3.5 w-3.5" /> Export CSV
+            <Button variant="ghost" size="sm" onClick={exportWorkbook}>
+              <Download className="mr-1.5 h-3.5 w-3.5" /> Export Excel
             </Button>
           </div>
           {inPeriod.length === 0 ? (

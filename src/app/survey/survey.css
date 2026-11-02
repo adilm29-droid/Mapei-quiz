@@ -89,3 +89,37 @@
 .hr .hr-back:hover { color: var(--hr-lav); }
 .hr .hr-done-icon { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 30px; color: #fff; background: linear-gradient(135deg, var(--hr-pink), var(--hr-lav)); }
 .hr .hr-foot { text-align: center; font-size: 12px; color: var(--hr-muted); margin-top: 28px; }
+
+/* Pank the mascot — beside the form on wide screens, docked top-right on small ones */
+.hr .pank {
+  --pank-glow: rgba(206,186,250,0.55);
+  position: fixed; z-index: 6;
+  left: calc(50% + 336px); top: 50%; transform: translateY(-50%);
+  width: min(300px, calc(50vw - 348px)); aspect-ratio: 300 / 380;
+}
+.hr .pank-glow {
+  position: absolute; inset: 8% -6% 4%; border-radius: 50%;
+  background: radial-gradient(closest-side, var(--pank-glow), transparent 75%);
+  transition: background 0.8s ease; pointer-events: none;
+}
+.hr .pank-canvas { position: absolute; inset: 0; cursor: pointer; }
+.hr .pank-canvas canvas { width: 100% !important; height: 100% !important; display: block; }
+.hr .pank-bubble {
+  position: absolute; left: 50%; top: 2%; transform: translateX(-50%);
+  background: #fff; color: var(--hr-ink); border: 1px solid var(--hr-line); border-radius: 999px;
+  padding: 8px 14px; font-size: 14px; font-weight: 600; white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(109,79,179,0.14); animation: pankPop 1.7s ease both; pointer-events: none;
+}
+.hr .pank-heart { position: absolute; bottom: 62%; width: 22px; height: 22px; fill: #ff7aa8; animation: pankHeart 1.4s ease-out both; pointer-events: none; }
+@keyframes pankPop { 0% { opacity: 0; transform: translate(-50%, 8px) scale(.9); } 12%, 80% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -6px); } }
+@keyframes pankHeart { 0% { opacity: 0; transform: translateY(0) scale(.6); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-120px) scale(1.15) rotate(12deg); } }
+
+@media (max-width: 1019px) {
+  .hr .pank { left: auto; right: 6px; top: calc(env(safe-area-inset-top, 0px) + 2px); transform: none; width: 70px; }
+  .hr .pank-bubble { display: none; }
+  .hr .pank-heart { width: 14px; height: 14px; bottom: 30%; }
+  .hr .hr-with-pank .hr-brand, .hr .hr-with-pank .hr-progress { padding-right: 76px; }
+  .hr .hr-with-pank .hr-progress { min-height: 74px; }
+  .hr .hr-with-pank > .hr-brand { min-height: 48px; align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) { .hr .pank-heart, .hr .pank-bubble { animation-duration: .01s; } }

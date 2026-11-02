@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react'
 
 import { LogoFull } from '@/components/brand/LogoFull'
 import { AuthForm } from '@/components/auth/AuthForm'
+import { HrSurveyButton } from '@/components/auth/HrSurveyButton'
 
 export default function SignInPage() {
   const router = useRouter()
@@ -35,10 +36,8 @@ export default function SignInPage() {
         <AuthForm />
       </div>
 
-      <div className="relative z-10 pb-4 text-center">
-        <a href="/survey" className="text-[11px] font-medium uppercase tracking-[0.25em] text-[#D8C8F5]/80 underline-offset-4 transition-colors hover:text-white hover:underline">
-          HR Feedback Survey →
-        </a>
+      <div className="relative z-10 flex justify-center px-6 pb-8">
+        <HrSurveyButton />
       </div>
 
       <div className="relative z-10 pb-6 text-center text-[10px] font-medium uppercase tracking-[0.3em] text-white/35">

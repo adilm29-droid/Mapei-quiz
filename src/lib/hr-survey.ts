@@ -19,7 +19,7 @@ export const SURVEYS: Record<
     key: 'A',
     title: 'Staff → Manager',
     picker: 'I’m rating my Manager / HOD',
-    blurb: 'Your answers are anonymous in reports.',
+    blurb: 'Confidential: your manager never sees who said what.',
     assessedLabel: 'Name of your HOD / Manager',
     questions: [
       'Does your manager communicate instructions and expectations clearly?',
