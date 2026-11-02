@@ -23,6 +23,7 @@ interface HrRow {
   kpi_score: number
   comment: string | null
   created_at: string
+  is_admin?: boolean
 }
 
 type View = 'report' | 'completions' | 'settings'
@@ -342,7 +343,10 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
                         {new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                       </td>
                       <td className="px-5 py-3">
-                        <div className="text-body font-medium text-whitex-soft">{r.respondent_name}</div>
+                        <div className="text-body font-medium text-whitex-soft">
+                          {r.respondent_name}
+                          {r.is_admin && <Badge tone="gold" className="ml-2">Admin</Badge>}
+                        </div>
                         <div className="text-micro text-whitex-faint">{r.respondent_email}</div>
                       </td>
                       <td className="px-5 py-3">
@@ -433,7 +437,7 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
             <p className="mt-6 text-caption leading-relaxed text-whitex-muted">
               <strong className="text-whitex-soft">Scoring.</strong> 10 questions × 5 = 50 points. KPI score = total × 2, out of 100.
               Where several people rate the same person, the KPI is the average. Survey A flags anyone with fewer than{' '}
-              {MIN_HOD_RESPONSES} responses. Periods run Jan–Jun and Jul–Dec; each person can rate the same colleague once per period.
+              {MIN_HOD_RESPONSES} responses. Periods run Jan–Jun and Jul–Dec; each person can rate the same colleague once per period (admin, while signed in, can submit any number of times).
             </p>
           </div>
         </div>

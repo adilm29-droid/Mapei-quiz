@@ -335,6 +335,7 @@ export type Database = {
           created_at: string
           department: string | null
           id: string
+          is_admin: boolean
           kpi_score: number
           period: string
           respondent_email: string
@@ -349,6 +350,7 @@ export type Database = {
           created_at?: string
           department?: string | null
           id?: string
+          is_admin?: boolean
           kpi_score: number
           period: string
           respondent_email: string
@@ -363,6 +365,7 @@ export type Database = {
           created_at?: string
           department?: string | null
           id?: string
+          is_admin?: boolean
           kpi_score?: number
           period?: string
           respondent_email?: string

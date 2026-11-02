@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getHrRespondent } from '@/lib/hr-gate'
+import { getSession } from '@/lib/session'
 import { normaliseName, periodFor, scoreOf } from '@/lib/hr-survey'
 
 export const runtime = 'nodejs'
@@ -10,6 +11,7 @@ export const dynamic = 'force-dynamic'
  * POST /api/survey/submit
  * Body: { type: 'A'|'B', assessed, department?, answers: number[10], comment? }
  * Respondent comes from the hr_gate cookie. Score is computed here, not trusted from the client.
+ * Only a signed-in admin may submit more than once for the same person in a period.
  */
 export async function POST(request: Request) {
   const me = await getHrRespondent()
@@ -41,6 +43,7 @@ export async function POST(request: Request) {
   const department = normaliseName(body?.department).slice(0, 80) || null
   const comment = String(body?.comment ?? '').trim().slice(0, 2000) || null
   const { total, kpi } = scoreOf(answers)
+  const isAdmin = (await getSession())?.role === 'admin'
 
   const { error } = await getSupabaseAdmin().from('hr_responses').insert({
     survey_type: type,
@@ -53,6 +56,7 @@ export async function POST(request: Request) {
     total,
     kpi_score: kpi,
     comment,
+    is_admin: isAdmin,
   })
   if (error) {
     if (error.code === '23505') {

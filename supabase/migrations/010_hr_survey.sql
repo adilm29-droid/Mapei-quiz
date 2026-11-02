@@ -28,9 +28,15 @@ CREATE TABLE IF NOT EXISTS hr_responses (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- One submission per respondent, per person rated, per survey type, per half-year
-CREATE UNIQUE INDEX IF NOT EXISTS hr_responses_once
-  ON hr_responses (lower(respondent_email), survey_type, lower(assessed_name), period);
+-- Set when the respondent was signed in as admin (admin may submit repeatedly)
+ALTER TABLE hr_responses ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- One submission per respondent, per person rated, per survey type, per half-year.
+-- Admin submissions are exempt.
+DROP INDEX IF EXISTS hr_responses_once;
+CREATE UNIQUE INDEX hr_responses_once
+  ON hr_responses (lower(respondent_email), survey_type, lower(assessed_name), period)
+  WHERE NOT is_admin;
 CREATE INDEX IF NOT EXISTS hr_responses_report
   ON hr_responses (period, survey_type, lower(assessed_name));
 
