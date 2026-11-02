@@ -208,6 +208,12 @@ export default function Home() {
               }}
             >
               <AuthForm />
+              <a
+                href="/survey"
+                className="absolute bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.25em] text-[#D8C8F5]/80 underline-offset-4 transition-colors hover:text-white hover:underline"
+              >
+                HR Feedback Survey →
+              </a>
             </motion.aside>
           )}
         </AnimatePresence>

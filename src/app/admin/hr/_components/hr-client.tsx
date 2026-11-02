@@ -1,0 +1,443 @@
+'use client'
+
+import { Fragment, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import { Download, Copy, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
+import { SURVEYS, periodFor, periodLabel, MIN_HOD_RESPONSES, type SurveyType } from '@/lib/hr-survey'
+
+interface HrRow {
+  id: string
+  survey_type: string
+  period: string
+  department: string | null
+  assessed_name: string
+  respondent_name: string
+  respondent_email: string
+  answers: number[]
+  total: number
+  kpi_score: number
+  comment: string | null
+  created_at: string
+}
+
+type View = 'report' | 'completions' | 'settings'
+
+const SELECT =
+  'w-full rounded-lg border border-midnight-line bg-midnight-elevated px-3 py-2 text-caption text-white focus:border-aurora-from focus:outline-none'
+const LABEL = 'mb-1.5 block text-micro uppercase tracking-wider text-whitex-faint'
+const PANEL = 'rounded-2xl border border-midnight-line bg-midnight-elevated/40'
+
+const avg = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0)
+const kpiClass = (k: number) => (k >= 80 ? 'text-success' : k >= 60 ? 'text-warning' : 'text-danger')
+const csvCell = (v: unknown) => {
+  const s = v == null ? '' : String(v)
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+
+function download(name: string, rows: unknown[][]) {
+  const blob = new Blob(['﻿' + rows.map(r => r.map(csvCell).join(',')).join('\n')], {
+    type: 'text/csv;charset=utf-8',
+  })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = name
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+}
+
+export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: string }) {
+  const router = useRouter()
+  const [view, setView] = useState<View>('report')
+  const [period, setPeriod] = useState(periodFor())
+  const [type, setType] = useState<SurveyType>('A')
+  const [dept, setDept] = useState('All')
+  const [open, setOpen] = useState<string | null>(null)
+  const [newCode, setNewCode] = useState('')
+  const [confirmDel, setConfirmDel] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const rows = initial
+  const periods = useMemo(() => [...new Set([periodFor(), ...rows.map(r => r.period)])].sort().reverse(), [rows])
+  const depts = useMemo(() => ['All', ...new Set(rows.map(r => r.department).filter(Boolean) as string[])], [rows])
+  const inPeriod = useMemo(() => rows.filter(r => r.period === period), [rows, period])
+  const filtered = useMemo(
+    () => inPeriod.filter(r => r.survey_type === type && (dept === 'All' || r.department === dept)),
+    [inPeriod, type, dept],
+  )
+
+  const groups = useMemo(() => {
+    const m = new Map<string, { name: string; depts: Set<string>; list: HrRow[] }>()
+    for (const r of filtered) {
+      const k = r.assessed_name.toLowerCase()
+      if (!m.has(k)) m.set(k, { name: r.assessed_name, depts: new Set(), list: [] })
+      const g = m.get(k)!
+      g.list.push(r)
+      if (r.department) g.depts.add(r.department)
+    }
+    return [...m.values()]
+      .map(g => ({
+        name: g.name,
+        list: g.list,
+        dept: [...g.depts].join(', '),
+        kpi: Math.round(avg(g.list.map(r => r.kpi_score))),
+        perQ: Array.from({ length: 10 }, (_, i) => avg(g.list.map(r => r.answers[i]))),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [filtered])
+
+  function exportReport() {
+    const qs = SURVEYS[type].questions.map((_, i) => `Q${i + 1} avg`)
+    const out: unknown[][] = [
+      ['Period', 'Survey', 'Person assessed', 'Department', 'Responses', 'KPI score /100', ...qs, ...(type === 'B' ? ['Rated by'] : [])],
+    ]
+    for (const g of groups) {
+      out.push([
+        periodLabel(period),
+        type,
+        g.name,
+        g.dept,
+        g.list.length,
+        g.kpi,
+        ...g.perQ.map(v => v.toFixed(2)),
+        ...(type === 'B' ? [g.list.map(r => r.respondent_name).join('; ')] : []),
+      ])
+    }
+    download(`hr-survey-${type}-${period}.csv`, out)
+  }
+
+  function exportCompletions() {
+    const out: unknown[][] = [['Date', 'Period', 'Survey', 'Respondent', 'Email', 'Person assessed', 'Department']]
+    for (const r of inPeriod) {
+      out.push([new Date(r.created_at).toLocaleString('en-GB'), r.period, r.survey_type, r.respondent_name, r.respondent_email, r.assessed_name, r.department || ''])
+    }
+    download(`hr-survey-completions-${period}.csv`, out)
+  }
+
+  async function savePasscode() {
+    if (!/^\d{6}$/.test(newCode)) return toast.error('Passcode must be exactly 6 digits')
+    setBusy(true)
+    const res = await fetch('/api/admin/hr/passcode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passcode: newCode }),
+    })
+    const body = await res.json().catch(() => ({}))
+    setBusy(false)
+    if (!res.ok) return toast.error(body?.error || 'Could not save passcode')
+    setNewCode('')
+    toast.success('Passcode updated. Share the new one with staff.')
+    router.refresh()
+  }
+
+  async function del(id: string) {
+    setBusy(true)
+    const res = await fetch(`/api/admin/hr/responses/${id}`, { method: 'DELETE' })
+    const body = await res.json().catch(() => ({}))
+    setBusy(false)
+    if (!res.ok) return toast.error(body?.error || 'Delete failed')
+    setConfirmDel(null)
+    toast.success('Response deleted')
+    router.refresh()
+  }
+
+  const surveyUrl = typeof window !== 'undefined' ? `${window.location.origin}/survey` : '/survey'
+
+  return (
+    <>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-h1 font-semibold tracking-tight text-white">HR Colleague Feedback</h1>
+          <p className="mt-1 text-caption text-whitex-muted">
+            {inPeriod.length} responses in {periodLabel(period)} · staff link <span className="font-mono">/survey</span>
+          </p>
+        </div>
+        <div className="inline-flex items-center gap-1 rounded-xl border border-midnight-line bg-midnight-deepest/60 p-1">
+          {(
+            [
+              ['report', 'KPI Report'],
+              ['completions', 'Completions'],
+              ['settings', 'Settings'],
+            ] as const
+          ).map(([k, l]) => (
+            <button
+              key={k}
+              onClick={() => setView(k)}
+              className={cn(
+                'rounded-lg px-4 py-1.5 text-caption',
+                view === k ? 'bg-midnight-elevated font-medium text-white shadow-sm' : 'text-whitex-muted hover:text-whitex-soft',
+              )}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {view !== 'settings' && (
+        <div className={cn(PANEL, 'mb-4 grid gap-3 p-4 sm:grid-cols-3')}>
+          <div>
+            <label className={LABEL} htmlFor="hr-period">Period</label>
+            <select id="hr-period" className={SELECT} value={period} onChange={e => setPeriod(e.target.value)}>
+              {periods.map(p => (
+                <option key={p} value={p}>{periodLabel(p)}</option>
+              ))}
+            </select>
+          </div>
+          {view === 'report' && (
+            <>
+              <div>
+                <label className={LABEL} htmlFor="hr-type">Survey</label>
+                <select
+                  id="hr-type"
+                  className={SELECT}
+                  value={type}
+                  onChange={e => {
+                    setType(e.target.value as SurveyType)
+                    setOpen(null)
+                  }}
+                >
+                  <option value="A">A · Staff rating HOD (anonymous)</option>
+                  <option value="B">B · HOD rating staff</option>
+                </select>
+              </div>
+              <div>
+                <label className={LABEL} htmlFor="hr-dept">Department</label>
+                <select id="hr-dept" className={SELECT} value={dept} onChange={e => setDept(e.target.value)}>
+                  {depts.map(d => (
+                    <option key={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {view === 'report' &&
+        (groups.length === 0 ? (
+          <div className={cn(PANEL, 'p-12 text-center text-caption text-whitex-muted')}>
+            No Survey {type} responses for {periodLabel(period)} yet.
+          </div>
+        ) : (
+          <div className={cn(PANEL, 'overflow-hidden')}>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-midnight-line px-5 py-3">
+              <div className="text-body font-semibold text-white">
+                KPI scores · {groups.length} {groups.length === 1 ? 'person' : 'people'}
+              </div>
+              <Button variant="ghost" size="sm" onClick={exportReport}>
+                <Download className="mr-1.5 h-3.5 w-3.5" /> Export CSV
+              </Button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-midnight-line text-micro uppercase tracking-wider text-whitex-faint">
+                    <th className="px-4 py-3 font-medium">Person</th>
+                    <th className="px-4 py-3 font-medium">Dept</th>
+                    <th className="px-4 py-3 font-medium">Responses</th>
+                    <th className="px-4 py-3 font-medium">KPI /100</th>
+                    {SURVEYS[type].questions.map((q, i) => (
+                      <th key={i} title={q} className="px-2 py-3 text-center font-medium">Q{i + 1}</th>
+                    ))}
+                    <th className="px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {groups.map(g => (
+                    <Fragment key={g.name}>
+                      <tr className="border-b border-midnight-line/60 hover:bg-midnight-line/40">
+                        <td className="px-4 py-3 text-body font-medium text-whitex-soft">{g.name}</td>
+                        <td className="px-4 py-3 text-caption text-whitex-muted">{g.dept || '—'}</td>
+                        <td className="px-4 py-3 text-caption text-whitex-soft">
+                          {g.list.length}
+                          {type === 'A' && g.list.length < MIN_HOD_RESPONSES && (
+                            <Badge tone="warning" className="ml-2" title={`HR prefers at least ${MIN_HOD_RESPONSES} staff responses`}>
+                              below {MIN_HOD_RESPONSES}
+                            </Badge>
+                          )}
+                        </td>
+                        <td className={cn('px-4 py-3 font-mono text-lg font-bold', kpiClass(g.kpi))}>{g.kpi}</td>
+                        {g.perQ.map((v, i) => (
+                          <td key={i} className={cn('px-2 py-3 text-center font-mono text-caption', v < 3 ? 'text-danger' : 'text-whitex-soft')}>
+                            {v.toFixed(1)}
+                          </td>
+                        ))}
+                        <td className="px-4 py-3 text-right">
+                          <Button variant="ghost" size="sm" aria-expanded={open === g.name} onClick={() => setOpen(open === g.name ? null : g.name)}>
+                            {open === g.name ? 'Hide' : 'Details'}
+                          </Button>
+                        </td>
+                      </tr>
+                      {open === g.name && (
+                        <tr className="border-b border-midnight-line/60 bg-midnight-deepest/40">
+                          <td colSpan={15} className="px-5 py-4 text-caption">
+                            {type === 'B' ? (
+                              <div className="mb-3 text-whitex-soft">
+                                <span className="text-whitex-faint">Rated by:</span>{' '}
+                                {g.list.map(r => `${r.respondent_name} (${r.kpi_score})`).join(', ')}
+                              </div>
+                            ) : (
+                              <div className="mb-3 text-whitex-muted">
+                                Individual KPI scores: {g.list.map(r => r.kpi_score).sort((a, b) => b - a).join(', ')} · respondent names are hidden for anonymity
+                              </div>
+                            )}
+                            <div className="mb-2 text-micro uppercase tracking-wider text-whitex-faint">Comments</div>
+                            {g.list.filter(r => r.comment).length === 0 ? (
+                              <div className="text-whitex-muted">No comments.</div>
+                            ) : (
+                              g.list
+                                .filter(r => r.comment)
+                                .map(r => (
+                                  <div key={r.id} className="mb-2 rounded-md border-l-2 border-glow bg-glow/5 px-3 py-2 text-whitex-soft">
+                                    {r.comment}
+                                    {type === 'B' && <div className="mt-1 text-micro text-whitex-faint">— {r.respondent_name}</div>}
+                                  </div>
+                                ))
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+
+      {view === 'completions' && (
+        <div className={cn(PANEL, 'overflow-hidden')}>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-midnight-line px-5 py-3">
+            <div>
+              <div className="text-body font-semibold text-white">Who has submitted · {inPeriod.length}</div>
+              <div className="text-micro text-whitex-faint">Admin only. Do not share Survey A rows with the managers being rated.</div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={exportCompletions}>
+              <Download className="mr-1.5 h-3.5 w-3.5" /> Export CSV
+            </Button>
+          </div>
+          {inPeriod.length === 0 ? (
+            <div className="p-12 text-center text-caption text-whitex-muted">No responses in {periodLabel(period)} yet.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-midnight-line text-micro uppercase tracking-wider text-whitex-faint">
+                    <th className="px-5 py-3 font-medium">Date</th>
+                    <th className="px-5 py-3 font-medium">Respondent</th>
+                    <th className="px-5 py-3 font-medium">Survey</th>
+                    <th className="px-5 py-3 font-medium">Rated</th>
+                    <th className="w-44 px-5 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {inPeriod.map(r => (
+                    <tr key={r.id} className="border-b border-midnight-line/60 last:border-0 hover:bg-midnight-line/40">
+                      <td className="whitespace-nowrap px-5 py-3 text-caption text-whitex-muted">
+                        {new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="text-body font-medium text-whitex-soft">{r.respondent_name}</div>
+                        <div className="text-micro text-whitex-faint">{r.respondent_email}</div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <Badge tone={r.survey_type === 'A' ? 'info' : 'glow'}>{r.survey_type}</Badge>
+                      </td>
+                      <td className="px-5 py-3 text-caption text-whitex-soft">{r.assessed_name}</td>
+                      <td className="whitespace-nowrap px-5 py-3 text-right">
+                        {confirmDel === r.id ? (
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="sm" disabled={busy} className="text-danger hover:bg-danger/10" onClick={() => del(r.id)}>
+                              Confirm
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setConfirmDel(null)}>
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-whitex-muted hover:text-danger"
+                            aria-label={`Delete response from ${r.respondent_name}`}
+                            onClick={() => setConfirmDel(r.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {view === 'settings' && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className={cn(PANEL, 'p-6')}>
+            <div className="text-body font-semibold text-white">Staff passcode</div>
+            <p className="mb-4 mt-1 text-caption text-whitex-muted">
+              Everyone uses this 6-digit code to open the survey. Change it to cut off access.
+            </p>
+            <div className="mb-4 font-mono text-4xl font-bold tracking-[0.3em] text-white">{passcode || '— not set —'}</div>
+            <label className={LABEL} htmlFor="new-code">New passcode</label>
+            <div className="flex gap-2">
+              <Input
+                id="new-code"
+                inputMode="numeric"
+                maxLength={6}
+                value={newCode}
+                onChange={e => setNewCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="6 digits"
+                className="font-mono tracking-widest"
+              />
+              <Button onClick={savePasscode} disabled={busy} className="h-11">
+                Save
+              </Button>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2"
+              onClick={() => setNewCode(String(Math.floor(100000 + Math.random() * 900000)))}
+            >
+              Generate random
+            </Button>
+          </div>
+          <div className={cn(PANEL, 'p-6')}>
+            <div className="text-body font-semibold text-white">Survey link</div>
+            <p className="mb-4 mt-1 text-caption text-whitex-muted">Send this link plus the passcode to staff.</p>
+            <div className="flex gap-2">
+              <Input readOnly value={surveyUrl} aria-label="Survey link" onFocus={e => e.target.select()} />
+              <Button
+                variant="ghost"
+                className="h-11"
+                aria-label="Copy survey link"
+                onClick={() =>
+                  navigator.clipboard
+                    ?.writeText(surveyUrl)
+                    .then(() => toast.success('Link copied'), () => toast.error('Copy failed, select the link manually'))
+                }
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="mt-6 text-caption leading-relaxed text-whitex-muted">
+              <strong className="text-whitex-soft">Scoring.</strong> 10 questions × 5 = 50 points. KPI score = total × 2, out of 100.
+              Where several people rate the same person, the KPI is the average. Survey A flags anyone with fewer than{' '}
+              {MIN_HOD_RESPONSES} responses. Periods run Jan–Jun and Jul–Dec; each person can rate the same colleague once per period.
+            </p>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}

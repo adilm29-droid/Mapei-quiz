@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Users, FileText, Inbox, BookOpen, BarChart3, Mail, Crown } from 'lucide-react'
+import { Users, FileText, Inbox, BookOpen, BarChart3, Mail, Crown, HeartHandshake } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const TABS = [
@@ -13,6 +13,7 @@ const TABS = [
   { href: '/admin/reports',  label: 'Reports',  Icon: BarChart3 },
   { href: '/admin/emails',   label: 'Emails',   Icon: Mail },
   { href: '/admin/requests', label: 'Requests', Icon: Inbox },
+  { href: '/admin/hr',       label: 'HR Survey', Icon: HeartHandshake },
 ] as const
 
 export function AdminTabsNav() {

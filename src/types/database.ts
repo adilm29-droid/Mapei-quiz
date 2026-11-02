@@ -328,6 +328,57 @@ export type Database = {
           },
         ]
       }
+      hr_responses: {
+        Row: {
+          answers: number[]
+          comment: string | null
+          created_at: string
+          department: string | null
+          id: string
+          kpi_score: number
+          period: string
+          respondent_email: string
+          respondent_name: string
+          survey_type: string
+          total: number
+          assessed_name: string
+        }
+        Insert: {
+          answers: number[]
+          comment?: string | null
+          created_at?: string
+          department?: string | null
+          id?: string
+          kpi_score: number
+          period: string
+          respondent_email: string
+          respondent_name: string
+          survey_type: string
+          total: number
+          assessed_name: string
+        }
+        Update: {
+          answers?: number[]
+          comment?: string | null
+          created_at?: string
+          department?: string | null
+          id?: string
+          kpi_score?: number
+          period?: string
+          respondent_email?: string
+          respondent_name?: string
+          survey_type?: string
+          total?: number
+          assessed_name?: string
+        }
+        Relationships: []
+      }
+      hr_settings: {
+        Row: { key: string; value: string }
+        Insert: { key: string; value: string }
+        Update: { key?: string; value?: string }
+        Relationships: []
+      }
       practice_counters: {
         Row: {
           attempt_count: number

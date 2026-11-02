@@ -35,6 +35,12 @@ export default function SignInPage() {
         <AuthForm />
       </div>
 
+      <div className="relative z-10 pb-4 text-center">
+        <a href="/survey" className="text-[11px] font-medium uppercase tracking-[0.25em] text-[#D8C8F5]/80 underline-offset-4 transition-colors hover:text-white hover:underline">
+          HR Feedback Survey →
+        </a>
+      </div>
+
       <div className="relative z-10 pb-6 text-center text-[10px] font-medium uppercase tracking-[0.3em] text-white/35">
         LapizBlue © 2026 · v1.0 · Internal Use Only
       </div>
