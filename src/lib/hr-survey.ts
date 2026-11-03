@@ -55,7 +55,6 @@ export const SURVEYS: Record<
   },
 }
 
-export const MIN_HOD_RESPONSES = 3
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /** Twice per year in UAE time (UTC+4): Jan–Jun = H1, Jul–Dec = H2 */

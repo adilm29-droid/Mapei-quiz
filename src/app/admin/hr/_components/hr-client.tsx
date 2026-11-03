@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { SURVEYS, periodFor, periodLabel, MIN_HOD_RESPONSES, type SurveyType } from '@/lib/hr-survey'
+import { SURVEYS, periodFor, periodLabel, type SurveyType } from '@/lib/hr-survey'
 
 interface HrRow {
   id: string
@@ -36,9 +36,11 @@ const PANEL = 'rounded-2xl border border-midnight-line bg-midnight-elevated/40'
 const avg = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0)
 const kpiClass = (k: number) => (k >= 80 ? 'text-success' : k >= 60 ? 'text-warning' : 'text-danger')
 const SCALE_WORD = ['', 'Very Poor', 'Poor', 'Satisfactory', 'Good', 'Excellent']
+const keyOf = (type: string, name: string) => `${type}|${name.toLowerCase()}`
+const CHECK = 'h-4 w-4 cursor-pointer rounded accent-[#F4A6C1]'
 
 /** Excel workbook for one period: a Summary and a Responses sheet per survey, full question text as headers. */
-async function downloadWorkbook(period: string, rows: HrRow[]) {
+async function downloadWorkbook(period: string, rows: HrRow[], fileName = `hr-survey-${period}.xlsx`) {
   const ExcelJS = (await import('exceljs')).default
   const wb = new ExcelJS.Workbook()
   wb.creator = 'LapizBlue HR'
@@ -118,7 +120,7 @@ async function downloadWorkbook(period: string, rows: HrRow[]) {
   const buf = await wb.xlsx.writeBuffer()
   const a = document.createElement('a')
   a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
-  a.download = `hr-survey-${period}.xlsx`
+  a.download = fileName
   a.click()
   setTimeout(() => URL.revokeObjectURL(a.href), 1000)
 }
@@ -133,6 +135,7 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
   const [newCode, setNewCode] = useState('')
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [picked, setPicked] = useState<Set<string>>(new Set())
 
   const rows = initial
   const periods = useMemo(() => [...new Set([periodFor(), ...rows.map(r => r.period)])].sort().reverse(), [rows])
@@ -167,6 +170,42 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
     if (!inPeriod.length) return toast.error(`No responses in ${periodLabel(period)} to export`)
     try {
       await downloadWorkbook(period, inPeriod)
+    } catch {
+      toast.error('Export failed, please try again')
+    }
+  }
+
+  // Selection survives switching Survey A/B and Department, so HR can build one file across filters.
+  const pickedRows = useMemo(() => inPeriod.filter(r => picked.has(keyOf(r.survey_type, r.assessed_name))), [inPeriod, picked])
+  const pickedCount = useMemo(() => new Set(pickedRows.map(r => keyOf(r.survey_type, r.assessed_name))).size, [pickedRows])
+  const allShownPicked = groups.length > 0 && groups.every(g => picked.has(keyOf(type, g.name)))
+  const someShownPicked = groups.some(g => picked.has(keyOf(type, g.name)))
+
+  function togglePick(name: string) {
+    const k = keyOf(type, name)
+    setPicked(prev => {
+      const next = new Set(prev)
+      if (next.has(k)) next.delete(k)
+      else next.add(k)
+      return next
+    })
+  }
+
+  function toggleAllShown() {
+    setPicked(prev => {
+      const next = new Set(prev)
+      for (const g of groups) {
+        if (allShownPicked) next.delete(keyOf(type, g.name))
+        else next.add(keyOf(type, g.name))
+      }
+      return next
+    })
+  }
+
+  async function exportSelected() {
+    if (!pickedRows.length) return toast.error('Tick at least one person to export')
+    try {
+      await downloadWorkbook(period, pickedRows, `hr-survey-${period}-selected-${pickedCount}.xlsx`)
     } catch {
       toast.error('Export failed, please try again')
     }
@@ -236,7 +275,15 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
         <div className={cn(PANEL, 'mb-4 grid gap-3 p-4 sm:grid-cols-3')}>
           <div>
             <label className={LABEL} htmlFor="hr-period">Period</label>
-            <select id="hr-period" className={SELECT} value={period} onChange={e => setPeriod(e.target.value)}>
+            <select
+              id="hr-period"
+              className={SELECT}
+              value={period}
+              onChange={e => {
+                setPeriod(e.target.value)
+                setPicked(new Set())
+              }}
+            >
               {periods.map(p => (
                 <option key={p} value={p}>{periodLabel(p)}</option>
               ))}
@@ -280,17 +327,47 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
         ) : (
           <div className={cn(PANEL, 'overflow-hidden')}>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-midnight-line px-5 py-3">
-              <div className="text-body font-semibold text-white">
-                KPI scores · {groups.length} {groups.length === 1 ? 'person' : 'people'}
+              <div>
+                <div className="text-body font-semibold text-white">
+                  KPI scores · {groups.length} {groups.length === 1 ? 'person' : 'people'}
+                </div>
+                <div className="text-micro text-whitex-faint">
+                  {pickedCount > 0
+                    ? `${pickedCount} selected · ${pickedRows.length} responses (selection is kept when you switch survey or department)`
+                    : 'Tick people to export just them into one Excel, e.g. one department'}
+                </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={exportWorkbook}>
-                <Download className="mr-1.5 h-3.5 w-3.5" /> Export Excel
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                {pickedCount > 0 && (
+                  <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())}>
+                    Clear
+                  </Button>
+                )}
+                <Button size="sm" disabled={pickedCount === 0} onClick={exportSelected}>
+                  <Download className="mr-1.5 h-3.5 w-3.5" /> Export selected{pickedCount > 0 ? ` (${pickedCount})` : ''}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={exportWorkbook}>
+                  <Download className="mr-1.5 h-3.5 w-3.5" /> Export everyone
+                </Button>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-midnight-line text-micro uppercase tracking-wider text-whitex-faint">
+                    <th className="w-10 py-3 pl-5 pr-1">
+                      <input
+                        type="checkbox"
+                        className={CHECK}
+                        aria-label="Select everyone shown"
+                        title="Select everyone shown"
+                        checked={allShownPicked}
+                        ref={el => {
+                          if (el) el.indeterminate = someShownPicked && !allShownPicked
+                        }}
+                        onChange={toggleAllShown}
+                      />
+                    </th>
                     <th className="px-4 py-3 font-medium">Person</th>
                     <th className="px-4 py-3 font-medium">Dept</th>
                     <th className="px-4 py-3 font-medium">Responses</th>
@@ -305,16 +382,27 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
                 <tbody>
                   {groups.map(g => (
                     <Fragment key={g.name}>
-                      <tr className="border-b border-midnight-line/60 hover:bg-midnight-line/40">
-                        <td className="px-4 py-3 text-body font-medium text-whitex-soft">{g.name}</td>
+                      <tr
+                        className={cn(
+                          'border-b border-midnight-line/60 hover:bg-midnight-line/40',
+                          picked.has(keyOf(type, g.name)) && 'bg-[#F4A6C1]/[0.06]',
+                        )}
+                      >
+                        <td className="py-3 pl-5 pr-1">
+                          <input
+                            type="checkbox"
+                            className={CHECK}
+                            aria-label={`Select ${g.name}`}
+                            checked={picked.has(keyOf(type, g.name))}
+                            onChange={() => togglePick(g.name)}
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-body font-medium text-whitex-soft">
+                          <label className="cursor-pointer" onClick={() => togglePick(g.name)}>{g.name}</label>
+                        </td>
                         <td className="px-4 py-3 text-caption text-whitex-muted">{g.dept || '—'}</td>
                         <td className="px-4 py-3 text-caption text-whitex-soft">
                           {g.list.length}
-                          {type === 'A' && g.list.length < MIN_HOD_RESPONSES && (
-                            <Badge tone="warning" className="ml-2" title={`HR prefers at least ${MIN_HOD_RESPONSES} staff responses`}>
-                              below {MIN_HOD_RESPONSES}
-                            </Badge>
-                          )}
                         </td>
                         <td className="px-4 py-3">
                           <div className="grid gap-1.5">
@@ -343,7 +431,7 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
                       </tr>
                       {open === g.name && (
                         <tr className="border-b border-midnight-line/60 bg-midnight-deepest/40">
-                          <td colSpan={16} className="px-5 py-4 text-caption">
+                          <td colSpan={17} className="px-5 py-4 text-caption">
                             <div className="mb-2 text-micro uppercase tracking-wider text-whitex-faint">Rated by</div>
                             <div className="mb-4 grid gap-1">
                               {g.list.map(r => (
@@ -511,8 +599,7 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
             </div>
             <p className="mt-6 text-caption leading-relaxed text-whitex-muted">
               <strong className="text-whitex-soft">Scoring.</strong> 10 questions × 5 = 50 points. KPI score = total × 2, out of 100.
-              Where several people rate the same person, the KPI is the average. Survey A flags anyone with fewer than{' '}
-              {MIN_HOD_RESPONSES} responses. Periods run Jan–Jun and Jul–Dec; each person can rate the same colleague once per period (admin, while signed in, can submit any number of times).
+              Where several people rate the same person, the KPI is the average. Periods run Jan–Jun and Jul–Dec; each person can rate the same colleague once per period (admin, while signed in, can submit any number of times).
             </p>
           </div>
         </div>
