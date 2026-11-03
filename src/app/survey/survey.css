@@ -56,15 +56,11 @@
     radial-gradient(120% 60% at 50% 105%, var(--pink) 0%, transparent 60%),
     linear-gradient(180deg, var(--lav) 0%, var(--cream) 70%);
 }
-.hr .sv-stage::after { /* floor line */
-  content: ''; position: absolute; left: 12%; right: 12%; bottom: 18%; height: 1px; background: var(--m12);
-}
 .hr .sv-stage-note { position: absolute; left: 0; right: 0; bottom: 6%; text-align: center; font-size: 12px; color: var(--m55); z-index: 2; }
 
 @media (max-width: 860px) {
   .hr .sv-card { grid-template-columns: 1fr; grid-template-rows: auto 1fr; max-height: none; min-height: 0; border-radius: 24px; }
   .hr .sv-stage { order: -1; height: 230px; border-left: 0; border-bottom: 1px solid var(--m12); }
-  .hr .sv-stage::after { bottom: 14%; }
   .hr .sv-stage-note { display: none; }
   .hr .sv-main { padding: 22px 18px 20px; }
   .hr .sv-body { justify-content: flex-start; padding-top: 22px; }
