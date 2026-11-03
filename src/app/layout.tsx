@@ -1,35 +1,38 @@
 import './globals.css'
 import type { Metadata } from 'next'
-import { Manrope, Inter, Inter_Tight, JetBrains_Mono } from 'next/font/google'
+import localFont from 'next/font/local'
+
+// Fonts are self-hosted (src/fonts, latin variable woff2) so builds never
+// depend on fetching Google Fonts — that fetch intermittently failed on Vercel.
 
 // Body font (legacy + general): Manrope
-const manrope = Manrope({
-  subsets: ['latin'],
-  weight: ['200', '300', '400', '500', '600', '700', '800'],
+const manrope = localFont({
+  src: '../fonts/manrope.woff2',
+  weight: '200 800',
   variable: '--font-manrope',
   display: 'swap',
 })
 
 // Display font (per DESIGN_SYSTEM §2): Inter Tight at 700
-const interTight = Inter_Tight({
-  subsets: ['latin'],
-  weight: ['600', '700', '800'],
+const interTight = localFont({
+  src: '../fonts/inter-tight.woff2',
+  weight: '600 800',
   variable: '--font-display',
   display: 'swap',
 })
 
 // Body font for new screens (per design): Inter
-const inter = Inter({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
+const inter = localFont({
+  src: '../fonts/inter.woff2',
+  weight: '300 700',
   variable: '--font-sans',
   display: 'swap',
 })
 
 // Numerics: JetBrains Mono — scores, timers, XP
-const jetbrains = JetBrains_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+const jetbrains = localFont({
+  src: '../fonts/jetbrains-mono.woff2',
+  weight: '400 700',
   variable: '--font-mono',
   display: 'swap',
 })

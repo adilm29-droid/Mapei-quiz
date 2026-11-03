@@ -1,18 +1,19 @@
 import type { Metadata, Viewport } from 'next'
-import { Fraunces, Figtree } from 'next/font/google'
+import localFont from 'next/font/local'
 import './survey.css'
 
-// Display: Fraunces with its SOFT / WONK axes for a rounded, friendly serif
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  axes: ['SOFT', 'WONK', 'opsz'],
+// Display: Fraunces (variable: opsz, wght, SOFT, WONK) for a rounded, friendly serif
+const fraunces = localFont({
+  src: '../../fonts/fraunces.woff2',
+  weight: '100 900',
   variable: '--font-fraunces',
   display: 'swap',
 })
 
 // UI text
-const figtree = Figtree({
-  subsets: ['latin'],
+const figtree = localFont({
+  src: '../../fonts/figtree.woff2',
+  weight: '300 900',
   variable: '--font-figtree',
   display: 'swap',
 })
