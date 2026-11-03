@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { EMAIL_RE } from '@/lib/hr-survey'
+import { StaggerText, MagneticButton, Arrow } from './_components/ui'
 
+const Mascot = dynamic(() => import('./_components/Mascot'), { ssr: false })
 const PREFILL_KEY = 'hr_respondent'
 
 export default function SurveyGate() {
@@ -13,6 +16,9 @@ export default function SurveyGate() {
   const [code, setCode] = useState(['', '', '', '', '', ''])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [shake, setShake] = useState(false)
+  const [mood, setMood] = useState(0)
+  const [cheer, setCheer] = useState(0)
   const boxes = useRef<(HTMLInputElement | null)[]>([])
 
   useEffect(() => {
@@ -22,12 +28,22 @@ export default function SurveyGate() {
       if (saved?.email) setEmail(saved.email)
     } catch {}
     router.prefetch('/survey/form')
+    // say hello once the mascot has loaded
+    const t = setTimeout(() => {
+      setMood(4)
+      setCheer(c => c + 1)
+    }, 1400)
+    return () => clearTimeout(t)
   }, [router])
+
+  function react(m: number) {
+    setMood(m)
+    setCheer(c => c + 1)
+  }
 
   function setDigit(i: number, v: string) {
     const digits = v.replace(/\D/g, '')
     if (digits.length > 1) {
-      // pasted the whole code
       const next = [...code]
       for (let k = 0; k < digits.length && i + k < 6; k++) next[i + k] = digits[k]
       setCode(next)
@@ -46,14 +62,21 @@ export default function SurveyGate() {
     if (e.key === 'ArrowRight' && i < 5) boxes.current[i + 1]?.focus()
   }
 
+  function fail(msg: string) {
+    setError(msg)
+    setShake(true)
+    setTimeout(() => setShake(false), 500)
+    react(1)
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     const n = name.trim().replace(/\s+/g, ' ')
     const em = email.trim().toLowerCase()
     const pc = code.join('')
-    if (n.length < 2) return setError('Please enter your full name.')
-    if (!EMAIL_RE.test(em)) return setError('Please enter a valid email address.')
-    if (pc.length !== 6) return setError('Please enter the 6-digit passcode from HR.')
+    if (n.length < 2) return fail('Please enter your full name.')
+    if (!EMAIL_RE.test(em)) return fail('Please enter a valid email address.')
+    if (pc.length !== 6) return fail('Please enter the 6-digit passcode from HR.')
     setError('')
     setBusy(true)
     const res = await fetch('/api/survey/enter', {
@@ -68,86 +91,108 @@ export default function SurveyGate() {
         setCode(['', '', '', '', '', ''])
         boxes.current[0]?.focus()
       }
-      return setError(body?.error || 'Could not reach the server. Please try again.')
+      return fail(body?.error || 'Could not reach the server. Please try again.')
     }
     try {
       sessionStorage.setItem(PREFILL_KEY, JSON.stringify({ name: n, email: em }))
     } catch {}
-    router.push('/survey/form')
+    react(5)
+    setTimeout(() => router.push('/survey/form'), 700)
   }
 
   return (
-    <main className="hr-shell hr-fade">
-      <div className="hr-brand">
-        <span className="hr-brand-dot" aria-hidden="true" />
-        LapizBlue · Human Resources
-      </div>
-      <div className="hr-card hr-accent">
-        <h1 style={{ fontSize: 30, lineHeight: 1.15, marginBottom: 10 }}>Colleague Feedback Survey</h1>
-        <p className="hr-sub">
-          Ten short questions, rated 1 to 5. There are no right or wrong answers. It takes about two minutes.
-        </p>
-      </div>
+    <div className="sv-page">
+      <header className="sv-top">
+        <div className="sv-brand">
+          <span className="sv-dot" aria-hidden="true" />
+          <span className="eyebrow">LapizBlue · Human Resources</span>
+        </div>
+      </header>
 
-      <form className="hr-card" onSubmit={submit} noValidate>
-        <div className="hr-field">
-          <label className="hr-label" htmlFor="hr-name">
-            Your full name<span className="req" aria-hidden="true">*</span>
-          </label>
-          <input id="hr-name" autoComplete="name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Sara Ahmed" required />
-        </div>
-        <div className="hr-field">
-          <label className="hr-label" htmlFor="hr-email">
-            Work email<span className="req" aria-hidden="true">*</span>
-          </label>
-          <input
-            id="hr-email"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            autoCapitalize="none"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="name@lapizblue.com"
-            required
-          />
-        </div>
-        <fieldset className="hr-field" style={{ border: 0, padding: 0, margin: '18px 0 0' }}>
-          <legend className="hr-label">
-            Passcode<span className="req" aria-hidden="true">*</span>
-          </legend>
-          <div className="hr-otp">
-            {code.map((d, i) => (
-              <input
-                key={i}
-                ref={el => {
-                  boxes.current[i] = el
-                }}
-                value={d}
-                inputMode="numeric"
-                pattern="[0-9]*"
-                autoComplete={i === 0 ? 'one-time-code' : 'off'}
-                maxLength={i === 0 ? 6 : 1}
-                aria-label={`Passcode digit ${i + 1} of 6`}
-                aria-invalid={error.includes('passcode') ? 'true' : undefined}
-                onChange={e => setDigit(i, e.target.value)}
-                onKeyDown={e => onKey(i, e)}
-                onFocus={e => e.target.select()}
-              />
-            ))}
+      <div className="sv-card">
+        <form className="sv-main" onSubmit={submit} noValidate>
+          <div className="sv-body">
+            <span className="eyebrow">Colleague Feedback · 2 minutes</span>
+            <StaggerText text="Tell us how work really feels." className="display" as="h1" />
+            <p className="muted" style={{ fontSize: 17, lineHeight: 1.55, marginTop: 14, maxWidth: 460 }}>
+              Ten short questions, rated 1 to 5. There are no right or wrong answers — only honest ones.
+            </p>
+
+            <div style={{ marginTop: 26, maxWidth: 460 }}>
+              <div className="field">
+                <input id="hr-name" autoComplete="name" placeholder=" " value={name} onChange={e => setName(e.target.value)} required />
+                <label htmlFor="hr-name">Your full name</label>
+                <span className="line" />
+              </div>
+              <div className="field">
+                <input
+                  id="hr-email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  placeholder=" "
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                />
+                <label htmlFor="hr-email">Work email</label>
+                <span className="line" />
+              </div>
+            </div>
+
+            <fieldset style={{ border: 0, padding: 0, margin: '26px 0 0' }}>
+              <legend className="eyebrow" style={{ marginBottom: 10 }}>
+                Staff passcode
+              </legend>
+              <div className={`otp ${shake ? 'shake' : ''}`}>
+                {code.map((d, i) => (
+                  <input
+                    key={i}
+                    ref={el => {
+                      boxes.current[i] = el
+                    }}
+                    className={d ? 'filled' : ''}
+                    value={d}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete={i === 0 ? 'one-time-code' : 'off'}
+                    maxLength={i === 0 ? 6 : 1}
+                    aria-label={`Passcode digit ${i + 1} of 6`}
+                    aria-invalid={error.includes('passcode') ? 'true' : undefined}
+                    onChange={e => setDigit(i, e.target.value)}
+                    onKeyDown={e => onKey(i, e)}
+                    onFocus={e => e.target.select()}
+                  />
+                ))}
+              </div>
+              <p className="muted" style={{ fontSize: 13, marginTop: 10 }}>
+                Ask HR for the 6-digit code.
+              </p>
+            </fieldset>
+
+            {error && (
+              <div className="err" role="alert">
+                {error}
+              </div>
+            )}
           </div>
-          <p className="hr-help">Ask HR for the 6-digit staff passcode.</p>
-        </fieldset>
-        {error && (
-          <div className="hr-error" role="alert">
-            {error}
+
+          <div className="sv-foot">
+            <span className="muted" style={{ fontSize: 13 }}>
+              Staff only · confidential
+            </span>
+            <MagneticButton type="submit" disabled={busy}>
+              {busy ? 'Checking…' : 'Begin'} <Arrow />
+            </MagneticButton>
           </div>
-        )}
-        <button className="hr-btn" type="submit" disabled={busy} style={{ marginTop: 22 }}>
-          {busy ? 'Checking…' : 'Start survey'}
-        </button>
-      </form>
-      <p className="hr-foot">Staff only · Responses are stored securely for HR KPI scoring</p>
-    </main>
+        </form>
+
+        <aside className="sv-stage">
+          <Mascot mood={mood} cheer={cheer} />
+          <p className="sv-stage-note">Say hi to Pank — click to tickle</p>
+        </aside>
+      </div>
+    </div>
   )
 }
