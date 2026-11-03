@@ -31,11 +31,13 @@ import QuizCompleted from '@/emails/QuizCompleted'
 import Top3Finisher from '@/emails/Top3Finisher'
 import ScoreBeaten from '@/emails/ScoreBeaten'
 import Digest from '@/emails/Digest'
+import HrSurveySubmitted from '@/emails/HrSurveySubmitted'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'tarun.s@lapizblue.com'
+const HR_EMAIL = process.env.HR_EMAIL || 'hr@lapizblue.com'
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.zoho.com',
@@ -308,6 +310,21 @@ export async function POST(request) {
             rival_score: data.rival_score,
             max_score: data.max_score,
             quiz_url: data.quiz_url,
+          }),
+        )
+        break
+      }
+
+      case 'hr_survey_submitted': {
+        // Only ever goes to HR, never to an address from the request body
+        to = HR_EMAIL
+        subject = `HR survey: ${data.respondent_name} rated ${data.assessed_name}`
+        html = await render(
+          HrSurveySubmitted({
+            respondent_name: data.respondent_name,
+            assessed_name: data.assessed_name,
+            survey_type: data.survey_type === 'B' ? 'B' : 'A',
+            admin_url: data.admin_url,
           }),
         )
         break

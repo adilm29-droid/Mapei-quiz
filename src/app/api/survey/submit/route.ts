@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getHrRespondent } from '@/lib/hr-gate'
 import { getSession } from '@/lib/session'
@@ -67,6 +67,21 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ error: 'Could not save your answers. Please try again.' }, { status: 500 })
   }
+
+  // Let HR know someone finished. after() keeps the function alive until the mail is handed off.
+  const origin = new URL(request.url).origin
+  after(() =>
+    fetch(`${origin}/api/send-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'hr_survey_submitted',
+        data: { respondent_name: me.name, assessed_name: assessed, survey_type: type, admin_url: `${origin}/admin/hr` },
+      }),
+    })
+      .then(r => (r.ok ? null : r.text().then(t => console.error('[survey/submit] HR mail failed:', r.status, t))))
+      .catch(e => console.error('[survey/submit] HR mail failed:', e)),
+  )
 
   // Survey A is anonymous culture — the respondent doesn't get a score back
   return NextResponse.json({ ok: true, assessed, ...(type === 'B' ? { total, kpi } : {}) })
