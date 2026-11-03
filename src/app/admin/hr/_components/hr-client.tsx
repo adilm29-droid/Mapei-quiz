@@ -294,6 +294,7 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
                     <th className="px-4 py-3 font-medium">Person</th>
                     <th className="px-4 py-3 font-medium">Dept</th>
                     <th className="px-4 py-3 font-medium">Responses</th>
+                    <th className="px-4 py-3 font-medium">Rated by</th>
                     <th className="px-4 py-3 font-medium">KPI /100</th>
                     {SURVEYS[type].questions.map((q, i) => (
                       <th key={i} title={q} className="px-2 py-3 text-center font-medium">Q{i + 1}</th>
@@ -315,6 +316,19 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
                             </Badge>
                           )}
                         </td>
+                        <td className="px-4 py-3">
+                          <div className="grid gap-1.5">
+                            {g.list.map(r => (
+                              <div key={r.id} className="leading-tight">
+                                <div className="whitespace-nowrap text-caption font-medium text-whitex-soft">
+                                  {r.respondent_name}
+                                  {r.is_admin && <Badge tone="gold" className="ml-1.5">Admin</Badge>}
+                                </div>
+                                <div className="whitespace-nowrap text-micro text-whitex-faint">{r.respondent_email}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
                         <td className={cn('px-4 py-3 font-mono text-lg font-bold', kpiClass(g.kpi))}>{g.kpi}</td>
                         {g.perQ.map((v, i) => (
                           <td key={i} className={cn('px-2 py-3 text-center font-mono text-caption', v < 3 ? 'text-danger' : 'text-whitex-soft')}>
@@ -329,7 +343,7 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
                       </tr>
                       {open === g.name && (
                         <tr className="border-b border-midnight-line/60 bg-midnight-deepest/40">
-                          <td colSpan={15} className="px-5 py-4 text-caption">
+                          <td colSpan={16} className="px-5 py-4 text-caption">
                             <div className="mb-2 text-micro uppercase tracking-wider text-whitex-faint">Rated by</div>
                             <div className="mb-4 grid gap-1">
                               {g.list.map(r => (
