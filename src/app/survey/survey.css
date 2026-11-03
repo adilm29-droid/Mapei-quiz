@@ -231,3 +231,28 @@
 .hr h1.display { font-size: clamp(32px, 4.6vw, 54px); margin-top: 12px; }
 .hr .q-text { font-size: clamp(25px, 3.1vw, 38px); margin-top: 12px; min-height: 2.2em; }
 .hr .step-title { font-size: clamp(28px, 3.6vw, 44px); margin-top: 12px; }
+
+/* hearts fired by Pank's blaster — fly from the muzzle to the left edge of the page */
+.hr .pank-shot {
+  position: fixed; z-index: 50; width: 28px; height: 28px; pointer-events: none; fill: #f58fb6;
+  filter: drop-shadow(0 2px 0 rgba(74,14,31,0.25));
+  animation: pankShot 1.6s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+.hr .pank-shot:nth-of-type(3n) { fill: var(--pink); }
+.hr .pank-shot:nth-of-type(4n) { fill: var(--maroon); }
+@keyframes pankShot {
+  0% { transform: translate(0, 0) scale(0.3) rotate(0deg); opacity: 0; }
+  8% { transform: translate(calc(var(--dx) * 0.04), -6px) scale(var(--s)) rotate(calc(var(--rot) * 0.2)); opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(calc(var(--s) * 0.85)) rotate(var(--rot)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .hr .pank-shot { display: none; } }
+
+/* sleeping Pank */
+.hr .pank-zzz { position: absolute; left: 58%; top: 30%; pointer-events: none; z-index: 3; }
+.hr .pank-zzz span { position: absolute; font: 600 22px var(--font-fraunces), serif; color: var(--maroon); opacity: 0; animation: pankZ 2.4s ease-in-out infinite; }
+.hr .pank-zzz span:nth-child(2) { animation-delay: .8s; font-size: 17px; }
+.hr .pank-zzz span:nth-child(3) { animation-delay: 1.6s; font-size: 28px; }
+@keyframes pankZ { 0% { opacity: 0; transform: translate(0, 0) rotate(-8deg); } 25% { opacity: .85; } 100% { opacity: 0; transform: translate(34px, -70px) rotate(12deg); } }
+.hr .pank { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.hr .pank:active { cursor: grabbing; }

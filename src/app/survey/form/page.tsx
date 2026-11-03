@@ -40,6 +40,8 @@ export default function SurveyForm() {
   const [cheer, setCheer] = useState(0)
   const [shy, setShy] = useState(false)
   const [calm, setCalm] = useState(false)
+  const [preview, setPreview] = useState(0)
+  const [cue, setCue] = useState<{ id: number; text: string; act?: 'hop' | 'dance' | 'spin' | 'thumbs' } | undefined>()
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -57,6 +59,12 @@ export default function SurveyForm() {
   }, [router])
 
   const survey = type ? SURVEYS[type] : null
+
+  useEffect(() => {
+    if (step !== 'q') return
+    if (qi === 4) setCue({ id: Date.now(), text: 'Halfway there!', act: 'hop' })
+    if (qi === 9) setCue({ id: Date.now(), text: 'Last one!', act: 'spin' })
+  }, [qi, step])
   const answered = answers.filter(Boolean).length
 
   const react = (m: number) => {
@@ -324,7 +332,14 @@ export default function SurveyForm() {
                             aria-label={`${s.value}, ${s.label}`}
                             className={`pebble spot ${on ? 'on' : ''}`}
                             onPointerMove={spotlight}
-                            onClick={() => answer(s.value)}
+                            onPointerEnter={() => setPreview(s.value)}
+                            onPointerLeave={() => setPreview(0)}
+                            onFocus={() => setPreview(s.value)}
+                            onBlur={() => setPreview(0)}
+                            onClick={() => {
+                              setPreview(0)
+                              answer(s.value)
+                            }}
                             whileHover={reduce ? undefined : { y: -4 }}
                             whileTap={reduce ? undefined : { scale: 0.93, y: 3 }}
                             transition={{ type: 'spring', stiffness: 500, damping: 26 }}
@@ -435,6 +450,8 @@ export default function SurveyForm() {
             read={step === 'q' ? qi + 1 : 0}
             shy={shy}
             calm={calm}
+            preview={step === 'q' ? preview : 0}
+            cue={cue}
           />
           <p className="sv-stage-note">{step === 'q' ? 'Pank is listening' : 'Click Pank to tickle'}</p>
         </aside>

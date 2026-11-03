@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import * as THREE from 'three'
 
 /**
@@ -11,9 +12,14 @@ import * as THREE from 'three'
  * - Eyes and body follow the cursor anywhere on the page.
  * - Cursor still for a moment → looks down at its feet, breathing, tapping a foot.
  * - Nothing happening for a while → pulls a toy from behind its back and plays
- *   (bubble blaster, yo-yo, balloon). Any activity puts the toy away.
+ *   (heart blaster, yo-yo, balloon). Any activity puts the toy away.
+ *   The blaster aims left and its hearts fly across the whole page, with recoil.
  * - `cheer` increments on every pick → an exaggerated reaction for `mood` (1–5).
- * - `celebrate` → party routine. Click it to make it laugh.
+ * - `celebrate` → party routine.
+ * - Click → laughs; double-click → backflip; drag → stretch/squash, release → boing;
+ *   shake the cursor over it → dizzy; cursor arrives → waves; typing → bobs along;
+ *   hovering a rating (`preview`) → previews the reaction; ~30 s idle → yawns and
+ *   falls asleep (Zzz) until you come back.
  */
 
 export type MascotProps = {
@@ -26,6 +32,10 @@ export type MascotProps = {
   shy?: boolean
   /** calm mode: minimal motion, no toys */
   calm?: boolean
+  /** rating currently hovered (1–5) → Pank previews the reaction */
+  preview?: number
+  /** one-off line + action, e.g. milestones */
+  cue?: { id: number; text: string; act?: 'hop' | 'dance' | 'spin' | 'thumbs' }
   className?: string
 }
 
@@ -38,9 +48,11 @@ const MOODS: Record<number, { key: string; rim: string; glow: string; say: strin
   5: { key: '#fff4e6', rim: '#f2c49b', glow: 'rgba(242,196,155,0.65)', say: ['Love that!', 'Woohoo!'] },
 }
 
-type Action = 'nod' | 'comfort' | 'thumbs' | 'wink' | 'hop' | 'spin' | 'jump' | 'flip' | 'dance' | 'laugh' | 'read'
+type Action =
+  | 'nod' | 'comfort' | 'thumbs' | 'wink' | 'hop' | 'spin' | 'jump' | 'flip' | 'dance' | 'laugh' | 'read'
+  | 'wave' | 'dizzy' | 'boing' | 'yawn' | 'startle'
 const DUR: Record<Action, number> = {
-  read: 1.1, nod: 1.4, comfort: 1.9, thumbs: 1.6, wink: 1.3, hop: 1.5, spin: 1.2, jump: 1.4, flip: 1.6, dance: 2.6, laugh: 1.6,
+  read: 1.1, wave: 1.6, dizzy: 2.2, boing: 1.3, yawn: 2.2, startle: 0.9, nod: 1.4, comfort: 1.9, thumbs: 1.6, wink: 1.3, hop: 1.5, spin: 1.2, jump: 1.4, flip: 1.6, dance: 2.6, laugh: 1.6,
 }
 type Toy = 'blaster' | 'yoyo' | 'balloon'
 const TOY_PLAY = 5.2
@@ -163,15 +175,31 @@ const smooth = (a: number, b: number, x: number) => {
 }
 const bump = (a: number, b: number, x: number) => (x <= a || x >= b ? 0 : Math.sin(((x - a) / (b - a)) * Math.PI))
 
-export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy = false, calm = false, className }: MascotProps) {
-  const flags = useRef({ shy, calm })
-  flags.current = { shy, calm }
+export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy = false, calm = false, preview = 0, cue, className }: MascotProps) {
+  const flags = useRef({ shy, calm, preview })
+  flags.current = { shy, calm, preview }
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasHost = useRef<HTMLDivElement>(null)
   const api = useRef<{ react: (a: Action) => void; setMood: (m: number) => void; read: () => void } | null>(null)
   const [bubble, setBubble] = useState<{ text: string; id: number } | null>(null)
   const [hearts, setHearts] = useState<number[]>([])
   const firstCheer = useRef(cheer)
+  const [shots, setShots] = useState<{ id: number; x: number; y: number; dx: number; dy: number; rot: number; s: number }[]>([])
+  const onShot = useRef<((x: number, y: number) => void) | null>(null)
+  const [asleep, setAsleep] = useState(false)
+  const onSleep = useRef<((s: boolean) => void) | null>(null)
+  onSleep.current = setAsleep
+  const sayId = useRef(1000)
+  const onSay = useRef<((text: string) => void) | null>(null)
+  onSay.current = text => setBubble({ text, id: ++sayId.current })
+  const shotId = useRef(0)
+  onShot.current = (x, y) => {
+    const id = ++shotId.current
+    setShots(list => [
+      ...list.slice(-18),
+      { id, x, y, dx: -(x + 80), dy: (Math.random() - 0.5) * 160 - 30, rot: -20 - Math.random() * 40, s: 0.8 + Math.random() * 0.6 },
+    ])
+  }
 
   useEffect(() => {
     const host = canvasHost.current
@@ -484,32 +512,30 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
     }
     const TOY_SIZE: Record<Toy, number> = { blaster: 1.4, yoyo: 1.1, balloon: 1 }
     const toys: Record<Toy, THREE.Group> = { blaster, yoyo, balloon }
-    for (const t of Object.values(toys)) {
+    for (const [name, t] of Object.entries(toys)) {
       t.scale.setScalar(0.001)
       t.visible = false
-      arms[1].hand.add(t)
+      // blaster in the screen-left hand so it points away from the body
+      ;(name === 'blaster' ? arms[0] : arms[1]).hand.add(t)
     }
 
-    // bubbles shot by the blaster
-    const bubbleMat = track(
-      new THREE.MeshStandardMaterial({ color: '#c9b3f2', emissive: '#f58fb6', emissiveIntensity: 0.35, transparent: true, opacity: 0.62, roughness: 0.05, depthWrite: false }),
-    )
-    const bubbles = Array.from({ length: 16 }, () => {
-      const m = new THREE.Mesh(sphere, bubbleMat)
-      m.visible = false
-      scene.add(m)
-      return { m, v: new THREE.Vector3(), life: 0, size: 0.1 }
-    })
+    // heart blaster: hearts leave the muzzle and fly across the page (DOM), aimed left
     const muzzleWorld = new THREE.Vector3()
+    const aimQ = new THREE.Quaternion()
+    const parentQ = new THREE.Quaternion()
+    const recoilAxis = new THREE.Vector3(0, 0, 1)
+    const recoilQ = new THREE.Quaternion()
+    const flipY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI) // barrel +x → world −x
+    let recoil = 0
+    let recoilV = 0
     function shoot() {
-      const b = bubbles.find(x => x.life <= 0)
-      if (!b) return
       blaster.localToWorld(muzzleWorld.set(0.52, 0.02, 0))
-      b.m.position.copy(muzzleWorld)
-      b.v.set(0.2 + Math.random() * 1.0, 1.3 + Math.random() * 0.9, 1.1 + Math.random() * 0.8)
-      b.size = 0.09 + Math.random() * 0.1
-      b.life = 1.8
-      b.m.visible = true
+      muzzleWorld.project(camera)
+      const r = host!.getBoundingClientRect()
+      const x = r.left + ((muzzleWorld.x + 1) / 2) * r.width
+      const y = r.top + ((1 - muzzleWorld.y) / 2) * r.height
+      onShot.current?.(x, y)
+      recoilV += 9 // kick
     }
 
     const faceDir = new THREE.Vector3()
@@ -535,15 +561,31 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
     let blinkUntil = 0
     let prevY = 0
 
+    let dragging = false
+    let dragMoved = false
+    let dragStretch = 0
+    let dragLean = 0
+    let dragStart = { x: 0, y: 0 }
+    let boingAmp = 0
+    let sleeping = false
+    let toysThisIdle = 0
+    let typingUntil = 0
+    let lastWave = -20
+    let shake = 0
+    let lastPtr = { x: 0, y: 0, t: 0 }
+    const moodKey = Object.fromEntries(Object.entries(MOODS).map(([k, v]) => [k, new THREE.Color(v.key)]))
+    const moodRim = Object.fromEntries(Object.entries(MOODS).map(([k, v]) => [k, new THREE.Color(v.rim)]))
+
     const cur = {
       tilt: 0.34, yaw: 0, rotZ: 0, x: 0, y: 0, sx: 1, sy: 1, eye: 1, lx: 0, ly: -0.9,
-      armL: 0, armR: 0, armRx: 0, mouth: 0, toyScale: 0, reach: 0,
+      armL: 0, armR: 0, armRx: 0, armLx: 0, mouth: 0, toyScale: 0, reach: 0,
     }
     const lerp = (a: number, b: number, k: number) => a + (b - a) * k
 
     function startToy(t: number) {
       const options = (['blaster', 'yoyo', 'balloon'] as Toy[]).filter(x => x !== lastToy)
       toy = options[Math.floor(Math.random() * options.length)]
+      toysThisIdle++
       lastToy = toy
       toyPhase = 'fetch'
       toyT0 = t
@@ -567,6 +609,10 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
 
     api.current = {
       react: (a: Action) => {
+        if (sleeping) {
+          sleeping = false
+          onSleep.current?.(false)
+        }
         stowToy(clock.elapsedTime, true)
         action = a
         actionT0 = clock.elapsedTime
@@ -611,6 +657,8 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
       let armL = Math.sin(t * 2.1) * 0.08
       let armR = -Math.sin(t * 2.1) * 0.08
       let armRx = 0
+      let armLx = 0
+      let sleepy = false
       let mouth = 0
       let thumbs = false
       let laugh = false
@@ -623,16 +671,62 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
       feet[1].position.y = -1.16 + tap * 0.09 * amp
       feet[1].rotation.x = -tap * 0.4 * amp
 
+      // typing in a field: bob along and watch the input
+      if (!action && !toy && t < typingUntil) {
+        tilt = 0.12 + Math.abs(Math.sin(t * 18)) * 0.07
+        lx = -0.85
+        ly = -0.25
+        yaw = -0.3
+      }
+
+      // previewing a hovered rating
+      const pv = flags.current.preview
+      if (!action && !toy && pv > 0) {
+        yaw = -0.32
+        lx = -0.75
+        ly = -0.15
+        tilt = 0.04
+        if (pv === 1) { eye = 0.94; rotZ = Math.sin(t * 30) * 0.02; sy = 0.96; sx = 1.03 }
+        else if (pv === 2) { eye = 0.98; tilt = 0.12; rotZ = 0.08 }
+        else if (pv === 3) { eye = 1.03; mouth = 0.1 }
+        else if (pv === 4) { eye = 1.12; mouth = 0.4; y = Math.abs(Math.sin(t * 6)) * 0.06 }
+        else { eye = 1.22; mouth = 0.75; y = Math.abs(Math.sin(t * 9)) * 0.14; armL = -0.8; armR = 0.8 }
+      }
+
+      // drifting off after a long quiet spell
+      if (!action && !toy && !sleeping && !calmNow && t - lastActivity > 30) {
+        action = 'yawn'
+        actionT0 = t
+        onSay.current?.('Yaaawn…')
+      }
+      if (sleeping && !action) {
+        sleepy = true
+        tilt = 0.5
+        yaw = 0
+        rotZ = Math.sin(t * 0.8) * 0.04
+        sy = 1 + Math.sin(t * 1.6) * 0.05
+        sx = 1 - Math.sin(t * 1.6) * 0.025
+        mouth = 0.12 + Math.sin(t * 1.6) * 0.05
+        armL = 0.1
+        armR = -0.1
+      }
+
+      // recoil: damped spring
+      recoilV += (-260 * recoil - 22 * recoilV) * dt
+      recoil += recoilV * dt
+      if (toy !== 'blaster') recoil = recoilV = 0
+
       // toys: start after a quiet spell
-      if (!action && !toy && !calmNow && t - lastActivity > 8 && t - lastToyEnd > 3) startToy(t)
+      if (!action && !toy && !calmNow && !sleeping && toysThisIdle < 2 && t - lastActivity > 8 && t - lastToyEnd > 3) startToy(t)
 
       if (toy) {
         const pt = t - toyT0
         if (toyPhase === 'fetch') {
           // reach behind the back, pop the toy out
           const p = pt / FETCH
-          armR = lerp(-0.4, 1.3, smooth(0.35, 1, p)) * (p < 0.35 ? smooth(0, 0.35, p) * -1 : 1)
-          armRx = p < 0.5 ? -1.4 * bump(0, 0.5, p) : 0
+          const v = lerp(-0.4, 1.3, smooth(0.35, 1, p)) * (p < 0.35 ? smooth(0, 0.35, p) * -1 : 1)
+          const vx = p < 0.5 ? -1.4 * bump(0, 0.5, p) : 0
+          if (toy === 'blaster') { armL = -v; armLx = vx } else { armR = v; armRx = vx }
           cur.toyScale = smooth(0.4, 0.9, p)
           if (p >= 1) {
             toyPhase = 'play'
@@ -642,19 +736,25 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
           const p = pt / TOY_PLAY
           eye = 1.08
           if (toy === 'blaster') {
-            armR = 0.55
-            armRx = -1.25
-            yaw = -0.15
-            lx = 0.4
-            ly = 0.4
-            tilt = 0
-            mouth = 0.35
-            if (t > nextShot) {
+            // aim left across the page
+            armL = -1.45 + recoil * 0.4   // arm out to the left, kicks up on recoil
+            armLx = -0.45 - recoil * 0.2
+            yaw = -0.45
+            lx = -1
+            ly = 0.08
+            tilt = -0.04 - recoil * 0.06
+            mouth = 0.3 + recoil * 0.4
+            eye = 1.08 + recoil * 0.05
+            x = recoil * 0.14          // shoved back to the right
+            rotZ = -recoil * 0.1       // lean from the kick
+            sy -= recoil * 0.04
+            sx += recoil * 0.03
+            if (pt > 0.25 && t > nextShot) {
               shoot()
-              nextShot = t + (Math.floor(pt * 2) % 3 === 2 ? 0.7 : 0.16)
-              armR += 0.12
+              // bursts of three
+              const n = Math.floor(pt / 0.18)
+              nextShot = t + (n % 4 === 3 ? 0.75 : 0.18)
             }
-            rotZ = Math.sin(t * 18) * 0.015
           } else if (toy === 'yoyo') {
             armR = 0.35
             armRx = -1.05
@@ -681,8 +781,9 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
           if (p >= 1) stowToy(t)
         } else {
           const p = pt / STOW
-          armR = lerp(1.2, -0.3, smooth(0, 0.6, p))
-          armRx = -1.2 * bump(0.3, 1, p)
+          const v = lerp(1.2, -0.3, smooth(0, 0.6, p))
+          const vx = -1.2 * bump(0.3, 1, p)
+          if (toy === 'blaster') { armL = -v; armLx = vx } else { armR = v; armRx = vx }
           cur.toyScale = 1 - smooth(0, 0.5, p)
           if (p >= 1) {
             toys[toy].visible = false
@@ -697,8 +798,11 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
       if (action) {
         const p = (t - actionT0) / DUR[action]
         if (p >= 1) {
+          if (action === 'yawn') {
+            sleeping = true
+            onSleep.current?.(true)
+          } else lastActivity = t
           action = null
-          lastActivity = t
         } else {
           const env = smooth(0, 0.15, p) * (1 - smooth(0.82, 1, p))
           tilt = 0
@@ -706,6 +810,58 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
           ly = 0.2
           yaw = 0
           switch (action) {
+            case 'wave':
+              armR = 2.5 + Math.sin(p * Math.PI * 9) * 0.45
+              rotZ = 0.12 * env
+              tilt = -0.05
+              eye = 1.12
+              mouth = 0.7 * env
+              lx = ptr.x
+              ly = ptr.y
+              y = 0.1 * bump(0, 0.3, p)
+              break
+            case 'dizzy': {
+              const w = 1 - smooth(0.7, 1, p)
+              lx = Math.cos(t * 14) * w
+              ly = Math.sin(t * 14) * w
+              rotZ = Math.sin(t * 7) * 0.22 * w
+              yaw = Math.sin(t * 3.5) * 0.3 * w
+              x = Math.sin(t * 3.5) * 0.12 * w
+              tilt = Math.cos(t * 7) * 0.1 * w
+              mouth = 0.45
+              eye = 1.05
+              break
+            }
+            case 'boing': {
+              const w = Math.cos(p * Math.PI * 7) * Math.pow(1 - p, 2)
+              sy = 1 + boingAmp * 0.6 * w
+              sx = 1 - boingAmp * 0.3 * w
+              y = Math.max(0, -boingAmp) * 0.6 * bump(0, 0.45, p)
+              eye = 1.15
+              mouth = env
+              laugh = p > 0.35 && p < 0.8
+              break
+            }
+            case 'yawn':
+              tilt = -0.25 * bump(0, 0.75, p) + 0.4 * smooth(0.75, 1, p)
+              mouth = bump(0.1, 0.75, p) * 1.2
+              armL = -2.2 * bump(0.05, 0.7, p)
+              armR = 2.2 * bump(0.05, 0.7, p)
+              sy = 1 + 0.12 * bump(0.05, 0.7, p)
+              sx = 1 - 0.05 * bump(0.05, 0.7, p)
+              sleepy = p > 0.2
+              lx = 0
+              ly = 0
+              break
+            case 'startle':
+              y = 0.55 * bump(0, 0.6, p)
+              eye = 1.35
+              mouth = 0.9 * env
+              armL = -2.4 * env
+              armR = 2.4 * env
+              sy = 1 + 0.2 * bump(0, 0.4, p)
+              sx = 2 - sy
+              break
             case 'read':
               // eyes sweep along the question, then settle on the options
               lx = -0.9 + smooth(0.05, 0.8, p) * 1.8
@@ -815,14 +971,30 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
         armL = 0.5
         armR = -0.5
         armRx = -0.6
+        armLx = -0.6
         tilt = 0.12
         laugh = true
         rotZ = Math.sin(t * 2.4) * 0.05
         mouth = 0.15
       }
 
+      // being dragged: stretch up / squash down, lean with the pull
+      if (dragging && dragMoved) {
+        sy = 1 + dragStretch * 0.6
+        sx = 1 - dragStretch * 0.28
+        rotZ = -dragLean * 0.35
+        eye = 1 + Math.max(0, dragStretch) * 0.45
+        mouth = Math.min(1, Math.abs(dragStretch) * 1.2)
+        laugh = dragStretch < -0.25
+        armL = -1.2 * Math.max(0, dragStretch) - 0.3
+        armR = 1.2 * Math.max(0, dragStretch) + 0.3
+        tilt = 0
+        lx = ptr.x
+        ly = ptr.y
+      }
+
       // blink (never mid-reaction)
-      if (action || toy) nextBlink = Math.max(nextBlink, t + 0.6)
+      if (action || toy || sleeping) nextBlink = Math.max(nextBlink, t + 0.6)
       if (t > nextBlink) {
         blinkUntil = t + 0.13
         nextBlink = t + 2.4 + Math.random() * 3
@@ -834,14 +1006,16 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
       cur.rotZ = lerp(cur.rotZ, rotZ, k * 1.2)
       cur.x = lerp(cur.x, x, k)
       cur.y = lerp(cur.y, y, k * 2)
-      cur.sx = lerp(cur.sx, sx, k * 2)
-      cur.sy = lerp(cur.sy, sy, k * 2)
+      const sk = dragging || action === 'boing' ? 1 : k * 2
+      cur.sx = lerp(cur.sx, sx, sk)
+      cur.sy = lerp(cur.sy, sy, sk)
       cur.eye = lerp(cur.eye, eye, k * 1.2)
       cur.lx = lerp(cur.lx, lx, k * 1.4)
       cur.ly = lerp(cur.ly, ly, k * 1.4)
       cur.armL = lerp(cur.armL, armL, k * 1.5)
       cur.armR = lerp(cur.armR, armR, k * 1.5)
       cur.armRx = lerp(cur.armRx, armRx, k * 1.5)
+      cur.armLx = lerp(cur.armLx, armLx, k * 1.5)
       cur.mouth = lerp(cur.mouth, mouth, k * 1.3)
 
       root.position.set(cur.x, cur.y, 0)
@@ -859,14 +1033,15 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
       shared.uVel.value.x = lerp(shared.uVel.value.x, (x - cur.x) * 2, 0.2)
 
       eyes.forEach((e, i) => {
-        const closed = laugh || (wink && i === 0)
+        const closed = laugh || sleepy || (wink && i === 0)
         e.group.visible = !closed
         e.happy.visible = closed
+        e.happy.rotation.z = sleepy ? Math.PI : 0 // ∪ sleepy lids vs ∩ happy
         e.group.scale.set(cur.eye, cur.eye * blink, cur.eye)
         e.happy.scale.setScalar(cur.eye)
         e.look.position.set(THREE.MathUtils.clamp(cur.lx, -1, 1) * 0.08, THREE.MathUtils.clamp(cur.ly, -1, 1) * 0.08, 0)
       })
-      arms[0].pivot.rotation.set(shyNow && !action ? cur.armRx : 0, 0, cur.armL)
+      arms[0].pivot.rotation.set(cur.armLx, 0, cur.armL)
       cur.reach = lerp(cur.reach, shyNow && !action ? 1 : 0, k * 1.2)
       // paws rise up over the eyes
       paws.forEach((pw, i) => {
@@ -881,17 +1056,17 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
       shadow.scale.setScalar(1 - Math.min(cur.y, 1.2) * 0.45)
       shadowMat.opacity = 1 - Math.min(cur.y, 1.2) * 0.6
 
-      for (const b of bubbles) {
-        if (b.life <= 0) continue
-        b.life -= dt
-        b.v.y += dt * 0.25
-        b.v.multiplyScalar(1 - dt * 0.9)
-        b.m.position.addScaledVector(b.v, dt)
-        const pop = b.life < 0.15 ? 1 + (0.15 - b.life) * 6 : 1
-        b.m.scale.setScalar(b.size * pop * (1 + Math.sin(t * 9 + b.size * 50) * 0.06))
-        if (b.life <= 0) b.m.visible = false
+      // keep the blaster pointing left in world space, muzzle flipping up with recoil
+      if (toy === 'blaster' && blaster.parent) {
+        blaster.parent.getWorldQuaternion(parentQ)
+        recoilQ.setFromAxisAngle(recoilAxis, -recoil * 0.55)
+        aimQ.copy(flipY).multiply(recoilQ)
+        blaster.quaternion.copy(parentQ.invert()).multiply(aimQ)
       }
 
+      const mm = String(pv > 0 && !action ? pv : moodNow)
+      target.key.copy(moodKey[mm] ?? moodKey['0'])
+      target.rim.copy(moodRim[mm] ?? moodRim['0'])
       shared.uKey.value.lerp(target.key, k * 0.25)
       shared.uRim.value.lerp(target.rim, k * 0.25)
       key.color.lerp(target.key, k * 0.25)
@@ -944,19 +1119,95 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
       const cy = r.top + r.height * 0.62
       ptr.x = THREE.MathUtils.clamp((e.clientX - cx) / 500, -1, 1)
       ptr.y = THREE.MathUtils.clamp(-(e.clientY - cy) / 400, -1, 1)
-      lastMove = clock.elapsedTime
-      lastActivity = clock.elapsedTime
-      if (toy && toyPhase === 'play') stowToy(clock.elapsedTime)
+      const now = clock.elapsedTime
+      lastMove = now
+      wake(now)
+      // shaking the cursor over Pank → dizzy
+      const over = e.clientX > r.left && e.clientX < r.right && e.clientY > r.top && e.clientY < r.bottom
+      const dtMs = Math.max(1, (now - lastPtr.t) * 1000)
+      const speed = Math.hypot(e.clientX - lastPtr.x, e.clientY - lastPtr.y) / dtMs
+      lastPtr = { x: e.clientX, y: e.clientY, t: now }
+      shake = over && speed > 2.2 ? shake + 1 : Math.max(0, shake - 0.5)
+      if (shake > 14 && !action && !dragging) {
+        shake = 0
+        api.current?.react('dizzy')
+        onSay.current?.('Whoa… dizzy')
+      }
+      if (dragging) {
+        const dy = dragStart.y - e.clientY
+        const dx = e.clientX - dragStart.x
+        if (Math.hypot(dx, dy) > 6) dragMoved = true
+        dragStretch = THREE.MathUtils.clamp(dy / 160, -0.55, 0.85)
+        dragLean = THREE.MathUtils.clamp(dx / 200, -1, 1)
+      }
     }
-    const onActivity = () => {
-      lastActivity = clock.elapsedTime
-      if (toy && toyPhase === 'play') stowToy(clock.elapsedTime)
+    function wake(now: number) {
+      lastActivity = now
+      toysThisIdle = 0
+      if (toy && toyPhase === 'play') stowToy(now)
+      if (sleeping) {
+        sleeping = false
+        onSleep.current?.(false)
+        action = 'startle'
+        actionT0 = now
+        onSay.current?.('I’m up! I’m up!')
+      }
     }
-    const onPoke = () => api.current?.react('laugh')
+    const onActivity = (e?: Event) => {
+      wake(clock.elapsedTime)
+      const tag = (e?.target as HTMLElement | null)?.tagName
+      if (e?.type === 'keydown' && (tag === 'INPUT' || tag === 'TEXTAREA')) typingUntil = clock.elapsedTime + 0.45
+    }
+    const onDown = (e: PointerEvent) => {
+      dragging = true
+      dragMoved = false
+      dragStart = { x: e.clientX, y: e.clientY }
+      dragStretch = 0
+      dragLean = 0
+      stowToy(clock.elapsedTime, true)
+    }
+    const onUp = () => {
+      if (!dragging) return
+      dragging = false
+      if (dragMoved) {
+        boingAmp = dragStretch
+        api.current?.react('boing')
+        onSay.current?.(Math.abs(dragStretch) > 0.3 ? 'Boing!' : 'Hehe')
+      }
+    }
+    let clickTimer: ReturnType<typeof setTimeout> | null = null
+    const onPoke = () => {
+      if (dragMoved) return
+      // wait a beat so a double-click can win
+      if (clickTimer) clearTimeout(clickTimer)
+      clickTimer = setTimeout(() => {
+        api.current?.react('laugh')
+        onSay.current?.('Hehe, that tickles!')
+      }, 230)
+    }
+    const onDouble = () => {
+      if (clickTimer) clearTimeout(clickTimer)
+      api.current?.react('flip')
+      onSay.current?.('Wheee!')
+    }
+    const onEnter = () => {
+      const now = clock.elapsedTime
+      if (!action && !dragging && now - lastWave > 12) {
+        lastWave = now
+        api.current?.react('wave')
+        onSay.current?.('Hi there!')
+      }
+    }
     window.addEventListener('pointermove', onMove, { passive: true })
     window.addEventListener('keydown', onActivity)
     window.addEventListener('scroll', onActivity, { passive: true, capture: true })
     wrap.addEventListener('click', onPoke)
+    wrap.addEventListener('dblclick', onDouble)
+    wrap.addEventListener('pointerdown', onDown)
+    wrap.addEventListener('pointerenter', onEnter)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+    window.addEventListener('pointerdown', onActivity)
 
     return () => {
       cancelAnimationFrame(raf)
@@ -966,6 +1217,13 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
       window.removeEventListener('keydown', onActivity)
       window.removeEventListener('scroll', onActivity, { capture: true })
       wrap.removeEventListener('click', onPoke)
+      wrap.removeEventListener('dblclick', onDouble)
+      wrap.removeEventListener('pointerdown', onDown)
+      wrap.removeEventListener('pointerenter', onEnter)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+      window.removeEventListener('pointerdown', onActivity)
+      if (clickTimer) clearTimeout(clickTimer)
       disposables.forEach(d => d.dispose())
       renderer.dispose()
       renderer.domElement.remove()
@@ -980,6 +1238,19 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
   useEffect(() => {
     if (read) api.current?.read()
   }, [read])
+
+  // milestones and other one-off lines
+  useEffect(() => {
+    if (!cue) return
+    if (cue.act) api.current?.react(cue.act)
+    setBubble({ text: cue.text, id: ++sayId.current })
+  }, [cue?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // preview glow follows the hovered rating
+  useEffect(() => {
+    const m = preview || mood
+    wrapRef.current?.style.setProperty('--pank-glow', MOODS[m]?.glow ?? MOODS[0].glow)
+  }, [preview, mood])
 
   useEffect(() => {
     if (cheer === firstCheer.current) return
@@ -1016,11 +1287,34 @@ export default function Mascot({ mood, cheer, celebrate = false, read = 0, shy =
     <div ref={wrapRef} className={`pank ${className ?? ''}`} aria-hidden="true">
       <div className="pank-glow" />
       <div ref={canvasHost} className="pank-canvas" />
+      {asleep && (
+        <div className="pank-zzz" aria-hidden="true">
+          <span>z</span>
+          <span>z</span>
+          <span>Z</span>
+        </div>
+      )}
       {bubble && (
         <div key={bubble.id} className="pank-bubble">
           {bubble.text}
         </div>
       )}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          shots.map(h => (
+            <svg
+              key={h.id}
+              className="pank-shot"
+              viewBox="0 0 24 24"
+              style={{ left: h.x - 14, top: h.y - 14, ['--dx' as any]: `${h.dx}px`, ['--dy' as any]: `${h.dy}px`, ['--rot' as any]: `${h.rot}deg`, ['--s' as any]: h.s }}
+              onAnimationEnd={() => setShots(list => list.filter(x => x.id !== h.id))}
+              aria-hidden="true"
+            >
+              <path d="M12 21s-7.5-4.6-9.6-9.2C.8 8.3 3 4.5 6.6 4.5c2.1 0 3.6 1.2 4.4 2.6.8-1.4 2.3-2.6 4.4-2.6 3.6 0 5.8 3.8 4.2 7.3C19.5 16.4 12 21 12 21z" />
+            </svg>
+          )),
+          document.querySelector('.hr') ?? document.body,
+        )}
       {hearts.map((id, i) => (
         <svg
           key={id}
