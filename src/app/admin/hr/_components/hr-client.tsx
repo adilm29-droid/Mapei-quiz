@@ -302,8 +302,8 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
                     setOpen(null)
                   }}
                 >
-                  <option value="A">A · Staff rating HOD</option>
-                  <option value="B">B · HOD rating staff</option>
+                  <option value="A">A · Staff rating HOD ({inPeriod.filter(r => r.survey_type === 'A').length})</option>
+                  <option value="B">B · HOD rating staff ({inPeriod.filter(r => r.survey_type === 'B').length})</option>
                 </select>
               </div>
               <div>
