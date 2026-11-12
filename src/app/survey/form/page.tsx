@@ -6,6 +6,8 @@ import dynamic from 'next/dynamic'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import { SURVEYS, SCALE, normaliseName, type SurveyType } from '@/lib/hr-survey'
 import { StaggerText, MagneticButton, Counter, Arrow, spotlight, EASE_SHEET } from '../_components/ui'
+import { NamePicker } from '../_components/NamePicker'
+import { departmentOf, type StaffPerson } from '@/lib/hr-roster'
 
 // three.js mascot loads after the form, client-only
 const Mascot = dynamic(() => import('../_components/Mascot'), { ssr: false })
@@ -30,11 +32,11 @@ export default function SurveyForm() {
   const [type, setType] = useState<SurveyType | null>(null)
   const [dept, setDept] = useState('')
   const [assessed, setAssessed] = useState('')
+  const [person, setPerson] = useState<StaffPerson | null>(null)
   const [answers, setAnswers] = useState<number[]>(EMPTY)
   const [comment, setComment] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [known, setKnown] = useState<{ names: string[]; depts: string[] }>({ names: [], depts: [] })
   const [result, setResult] = useState<{ total: number; kpi: number } | null>(null)
   const [mood, setMood] = useState(0)
   const [cheer, setCheer] = useState(0)
@@ -50,7 +52,6 @@ export default function SurveyForm() {
         if (res.status === 401) return router.replace('/survey')
         const body = await res.json().catch(() => ({}))
         if (body?.me) setMe(body.me)
-        setKnown({ names: body?.names ?? [], depts: body?.depts ?? [] })
       })
       .catch(() => router.replace('/survey'))
     try {
@@ -96,8 +97,8 @@ export default function SurveyForm() {
       react(1)
       return setError('This survey is for rating someone else, not yourself.')
     }
-    setAssessed(n)
-    setDept(normaliseName(dept))
+    setAssessed(person ? person.name : n)
+    setDept(person ? departmentOf(person) : '')
     setQi(0)
     go('q')
   }
@@ -167,7 +168,7 @@ export default function SurveyForm() {
     const res = await fetch('/api/survey/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type, assessed, department: dept, answers, comment }),
+      body: JSON.stringify({ type, assessed, person_id: person?.id ?? null, department: dept, answers, comment }),
     }).catch(() => null)
     const body = res ? await res.json().catch(() => ({})) : {}
     setBusy(false)
@@ -184,6 +185,7 @@ export default function SurveyForm() {
   function another() {
     setType(null)
     setAssessed('')
+    setPerson(null)
     setAnswers(EMPTY)
     setComment('')
     setResult(null)
@@ -284,27 +286,18 @@ export default function SurveyForm() {
                     <span className="eyebrow">Step 2 of 3 · Survey {type}</span>
                     <StaggerText text="Who are you rating?" className="display step-title" as="h1" />
                     <div style={{ marginTop: 22, maxWidth: 480 }}>
-                      <div className="field">
-                        <input id="assessed" list="known-names" autoComplete="off" placeholder=" " value={assessed} onChange={e => setAssessed(e.target.value)} autoFocus />
-                        <label htmlFor="assessed">{survey.assessedLabel}</label>
-                        <span className="line" />
-                        <datalist id="known-names">
-                          {known.names.map(n => (
-                            <option key={n} value={n} />
-                          ))}
-                        </datalist>
-                      </div>
-                      <p className="hint">Pick from the list if the name appears, so feedback for one person stays together.</p>
-                      <div className="field">
-                        <input id="dept" list="known-depts" autoComplete="off" placeholder=" " value={dept} onChange={e => setDept(e.target.value)} />
-                        <label htmlFor="dept">Department (optional)</label>
-                        <span className="line" />
-                        <datalist id="known-depts">
-                          {known.depts.map(n => (
-                            <option key={n} value={n} />
-                          ))}
-                        </datalist>
-                      </div>
+                      <NamePicker
+                        id="assessed"
+                        label={survey.assessedLabel}
+                        value={assessed}
+                        exclude={me.name}
+                        autoFocus
+                        onChange={(n, p) => {
+                          setAssessed(n)
+                          setPerson(p)
+                        }}
+                      />
+                      <p className="hint">Start typing and tap the name from the list.</p>
                     </div>
                     {error && <div className="err" role="alert">{error}</div>}
                     <div className="sv-foot" style={{ marginTop: 28 }}>

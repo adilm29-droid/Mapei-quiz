@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { EMAIL_RE } from '@/lib/hr-survey'
 import { StaggerText, MagneticButton, Arrow } from './_components/ui'
+import { NamePicker } from './_components/NamePicker'
+import { isJunkEmail, isJunkName } from '@/lib/hr-roster'
 
 const Mascot = dynamic(() => import('./_components/Mascot'), { ssr: false })
 const PREFILL_KEY = 'hr_respondent'
@@ -75,7 +77,9 @@ export default function SurveyGate() {
     const em = email.trim().toLowerCase()
     const pc = code.join('')
     if (n.length < 2) return fail('Please enter your full name.')
+    if (isJunkName(n)) return fail('Please enter your real name — pick it from the list as you type.')
     if (!EMAIL_RE.test(em)) return fail('Please enter a valid email address.')
+    if (isJunkEmail(em)) return fail('Please enter your own email address.')
     if (pc.length !== 6) return fail('Please enter the 6-digit passcode from HR.')
     setError('')
     setBusy(true)
@@ -94,7 +98,7 @@ export default function SurveyGate() {
       return fail(body?.error || 'Could not reach the server. Please try again.')
     }
     try {
-      sessionStorage.setItem(PREFILL_KEY, JSON.stringify({ name: n, email: em }))
+      sessionStorage.setItem(PREFILL_KEY, JSON.stringify({ name: body?.name || n, email: em }))
     } catch {}
     react(5)
     setTimeout(() => router.push('/survey/form'), 700)
@@ -119,11 +123,7 @@ export default function SurveyGate() {
             </p>
 
             <div style={{ marginTop: 26, maxWidth: 460 }}>
-              <div className="field">
-                <input id="hr-name" autoComplete="name" placeholder=" " value={name} onChange={e => setName(e.target.value)} required />
-                <label htmlFor="hr-name">Your full name</label>
-                <span className="line" />
-              </div>
+              <NamePicker id="hr-name" label="Your name" value={name} onChange={n => setName(n)} autoComplete="name" />
               <div className="field">
                 <input
                   id="hr-email"

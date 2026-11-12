@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getHrRespondent } from '@/lib/hr-gate'
 import { getSession } from '@/lib/session'
 import { normaliseName, periodFor, scoreOf } from '@/lib/hr-survey'
+import { STAFF, canonicalName, departmentOf } from '@/lib/hr-roster'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,11 +28,15 @@ export async function POST(request: Request) {
   const type = body?.type
   if (type !== 'A' && type !== 'B') return NextResponse.json({ error: 'Choose a survey type.' }, { status: 400 })
 
-  const assessed = normaliseName(body?.assessed).slice(0, 120)
-  if (assessed.length < 2) {
+  // Prefer the directory entry the person tapped; otherwise snap typed text to the directory when it's clearly one person
+  const picked = STAFF.find(p => p.id === body?.person_id) ?? null
+  const typed = normaliseName(body?.assessed).slice(0, 120)
+  if (!picked && typed.length < 2) {
     return NextResponse.json({ error: 'Please enter the name of the person you are rating.' }, { status: 400 })
   }
-  if (assessed === normaliseName(me.name)) {
+  const snapped = picked ? { name: picked.name, person: picked } : canonicalName(typed)
+  const assessed = snapped.name
+  if (assessed.toLowerCase() === canonicalName(me.name).name.toLowerCase()) {
     return NextResponse.json({ error: 'This survey is for rating someone else, not yourself.' }, { status: 400 })
   }
 
@@ -40,7 +45,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Please answer all 10 questions.' }, { status: 400 })
   }
 
-  const department = normaliseName(body?.department).slice(0, 80) || null
+  const department = snapped.person ? departmentOf(snapped.person) : normaliseName(body?.department).slice(0, 80) || null
   const comment = String(body?.comment ?? '').trim().slice(0, 2000) || null
   const { total, kpi } = scoreOf(answers)
   const isAdmin = (await getSession())?.role === 'admin'

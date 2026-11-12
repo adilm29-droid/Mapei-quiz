@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { signHrGate, hrGateCookieOptions } from '@/lib/hr-gate'
 import { EMAIL_RE } from '@/lib/hr-survey'
+import { canonicalName, isJunkEmail, isJunkName } from '@/lib/hr-roster'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -23,7 +24,11 @@ export async function POST(request: Request) {
   const passcode = String(body?.passcode ?? '')
 
   if (name.length < 2) return NextResponse.json({ error: 'Please enter your full name.' }, { status: 400 })
+  if (isJunkName(name)) {
+    return NextResponse.json({ error: 'Please enter your real name. HR needs to know who has completed the survey.' }, { status: 400 })
+  }
   if (!EMAIL_RE.test(email)) return NextResponse.json({ error: 'Please enter a valid email address.' }, { status: 400 })
+  if (isJunkEmail(email)) return NextResponse.json({ error: 'Please enter your own email address.' }, { status: 400 })
   if (!/^\d{6}$/.test(passcode)) {
     return NextResponse.json({ error: 'Please enter the 6-digit passcode from HR.' }, { status: 400 })
   }
@@ -38,9 +43,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'That passcode is not correct. Please check with HR.' }, { status: 401 })
   }
 
-  const res = NextResponse.json({ ok: true, name, email })
+  // Store the directory spelling when the typed name clearly means one person ("kamran sir" → Kamran)
+  const { name: finalName } = canonicalName(name)
+  const res = NextResponse.json({ ok: true, name: finalName, email })
   const secure = new URL(request.url).protocol === 'https:'
-  res.cookies.set({ ...hrGateCookieOptions(secure), value: signHrGate({ name, email }) })
+  res.cookies.set({ ...hrGateCookieOptions(secure), value: signHrGate({ name: finalName, email }) })
   return res
 }
 

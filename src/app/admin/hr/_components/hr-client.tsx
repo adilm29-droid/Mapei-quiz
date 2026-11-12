@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { SURVEYS, periodFor, periodLabel, type SurveyType } from '@/lib/hr-survey'
+import { inDirectory } from '@/lib/hr-roster'
 
 interface HrRow {
   id: string
@@ -38,6 +39,13 @@ const kpiClass = (k: number) => (k >= 80 ? 'text-success' : k >= 60 ? 'text-warn
 const SCALE_WORD = ['', 'Very Poor', 'Poor', 'Satisfactory', 'Good', 'Excellent']
 const keyOf = (type: string, name: string) => `${type}|${name.toLowerCase()}`
 const CHECK = 'h-4 w-4 cursor-pointer rounded accent-[#F4A6C1]'
+/** Name typed at the gate that matches nobody in the staff directory — worth a second look */
+const Unlisted = ({ name }: { name: string }) =>
+  inDirectory(name) ? null : (
+    <Badge tone="danger" className="ml-1.5" title="This name does not match anyone in the staff list">
+      Not in staff list
+    </Badge>
+  )
 
 /** Excel workbook for one period: a Summary and a Responses sheet per survey, full question text as headers. */
 async function downloadWorkbook(period: string, rows: HrRow[], fileName = `hr-survey-${period}.xlsx`) {
@@ -411,6 +419,7 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
                                 <div className="whitespace-nowrap text-caption font-medium text-whitex-soft">
                                   {r.respondent_name}
                                   {r.is_admin && <Badge tone="gold" className="ml-1.5">Admin</Badge>}
+                                  <Unlisted name={r.respondent_name} />
                                 </div>
                                 <div className="whitespace-nowrap text-micro text-whitex-faint">{r.respondent_email}</div>
                               </div>
@@ -509,6 +518,7 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
                         <div className="text-body font-medium text-whitex-soft">
                           {r.respondent_name}
                           {r.is_admin && <Badge tone="gold" className="ml-2">Admin</Badge>}
+                          <Unlisted name={r.respondent_name} />
                         </div>
                         <div className="text-micro text-whitex-faint">{r.respondent_email}</div>
                       </td>
