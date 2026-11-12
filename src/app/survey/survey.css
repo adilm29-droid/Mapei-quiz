@@ -259,12 +259,14 @@
 
 /* ---------- staff name type-ahead ---------- */
 .hr .namepick { position: relative; }
-.hr .namepick-ok { position: absolute; right: 0; bottom: 10px; font-size: 12px; font-weight: 700; color: var(--maroon); background: var(--pink); border-radius: 8px; padding: 2px 8px; pointer-events: none; }
+.hr .namepick-ok { position: absolute; right: 0; bottom: 10px; max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 700; color: var(--maroon); background: var(--pink); border-radius: 8px; padding: 2px 8px; pointer-events: none; }
+.hr .namepick.is-picked input { padding-right: 48%; }
 .hr .namepick-list {
   position: absolute; left: 0; right: 0; top: 100%; z-index: 20; margin: 6px 0 0; padding: 6px; list-style: none;
   max-height: 272px; overflow-y: auto; background: var(--cream); border: 1.5px solid var(--maroon); border-radius: 16px; box-shadow: 0 6px 0 var(--m25);
 }
-.hr .namepick-list li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 12px; border-radius: 10px; cursor: pointer; }
+.hr .namepick-list li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 12px; border-radius: 10px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+@media (hover: none) { .hr .namepick-list li { padding: 13px 12px; } }
 .hr .namepick-list li.hi { background: var(--pink); }
 .hr .namepick-list .n { font: 600 16px var(--font-fraunces), serif; font-variation-settings: 'SOFT' 100, 'WONK' 1; color: var(--maroon); }
 .hr .namepick-list .d { font-size: 12px; color: var(--m55); text-align: right; }

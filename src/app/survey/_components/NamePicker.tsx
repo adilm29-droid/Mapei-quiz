@@ -69,7 +69,7 @@ export function NamePicker({ id, label, value, onChange, autoFocus, autoComplete
   const showList = open && options.length > 0 && !(picked && picked.name === value)
 
   return (
-    <div ref={wrap} className="namepick">
+    <div ref={wrap} className={`namepick ${picked && picked.name === value ? 'is-picked' : ''}`}>
       <div className="field">
         <input
           id={id}
@@ -107,10 +107,8 @@ export function NamePicker({ id, label, value, onChange, autoFocus, autoComplete
               aria-selected={i === hi}
               className={i === hi ? 'hi' : ''}
               onPointerEnter={() => setHi(i)}
-              onPointerDown={e => {
-                e.preventDefault()
-                choose(p)
-              }}
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => choose(p)}
             >
               <span className="n">{p.name}</span>
               <span className="d">
