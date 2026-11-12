@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { SURVEYS, periodFor, periodLabel, type SurveyType } from '@/lib/hr-survey'
-import { inDirectory } from '@/lib/hr-roster'
+import { canonicalName, inDirectory } from '@/lib/hr-roster'
 
 interface HrRow {
   id: string
@@ -37,6 +37,8 @@ const PANEL = 'rounded-2xl border border-midnight-line bg-midnight-elevated/40'
 const avg = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0)
 const kpiClass = (k: number) => (k >= 80 ? 'text-success' : k >= 60 ? 'text-warning' : 'text-danger')
 const SCALE_WORD = ['', 'Very Poor', 'Poor', 'Satisfactory', 'Good', 'Excellent']
+/** "Adil Sir", "adil", "Adil" are one person: group old and new rows under the directory spelling */
+const shownName = (r: HrRow) => canonicalName(r.assessed_name).name
 const keyOf = (type: string, name: string) => `${type}|${name.toLowerCase()}`
 const CHECK = 'h-4 w-4 cursor-pointer rounded accent-[#F4A6C1]'
 /** Name typed at the gate that matches nobody in the staff directory — worth a second look */
@@ -80,12 +82,12 @@ async function downloadWorkbook(period: string, rows: HrRow[], fileName = `hr-su
     ]
     const byPerson = new Map<string, HrRow[]>()
     for (const r of list) {
-      const k = r.assessed_name.toLowerCase()
+      const k = shownName(r).toLowerCase()
       byPerson.set(k, [...(byPerson.get(k) ?? []), r])
     }
-    for (const g of [...byPerson.values()].sort((a, b) => a[0].assessed_name.localeCompare(b[0].assessed_name))) {
+    for (const g of [...byPerson.values()].sort((a, b) => shownName(a[0]).localeCompare(shownName(b[0])))) {
       sum.addRow([
-        g[0].assessed_name,
+        shownName(g[0]),
         [...new Set(g.map(r => r.department).filter(Boolean))].join(', '),
         g.length,
         Math.round(avg(g.map(r => r.kpi_score))),
@@ -113,7 +115,7 @@ async function downloadWorkbook(period: string, rows: HrRow[], fileName = `hr-su
         new Date(r.created_at).toLocaleString('en-GB'),
         r.respondent_name + (r.is_admin ? ' (admin)' : ''),
         r.respondent_email,
-        r.assessed_name,
+        shownName(r),
         r.department ?? '',
         ...r.answers.map(a => `${a} – ${SCALE_WORD[a]}`),
         r.total,
@@ -157,8 +159,9 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
   const groups = useMemo(() => {
     const m = new Map<string, { name: string; depts: Set<string>; list: HrRow[] }>()
     for (const r of filtered) {
-      const k = r.assessed_name.toLowerCase()
-      if (!m.has(k)) m.set(k, { name: r.assessed_name, depts: new Set(), list: [] })
+      const name = shownName(r)
+      const k = name.toLowerCase()
+      if (!m.has(k)) m.set(k, { name, depts: new Set(), list: [] })
       const g = m.get(k)!
       g.list.push(r)
       if (r.department) g.depts.add(r.department)
@@ -184,8 +187,8 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
   }
 
   // Selection survives switching Survey A/B and Department, so HR can build one file across filters.
-  const pickedRows = useMemo(() => inPeriod.filter(r => picked.has(keyOf(r.survey_type, r.assessed_name))), [inPeriod, picked])
-  const pickedCount = useMemo(() => new Set(pickedRows.map(r => keyOf(r.survey_type, r.assessed_name))).size, [pickedRows])
+  const pickedRows = useMemo(() => inPeriod.filter(r => picked.has(keyOf(r.survey_type, shownName(r)))), [inPeriod, picked])
+  const pickedCount = useMemo(() => new Set(pickedRows.map(r => keyOf(r.survey_type, shownName(r)))).size, [pickedRows])
   const allShownPicked = groups.length > 0 && groups.every(g => picked.has(keyOf(type, g.name)))
   const someShownPicked = groups.some(g => picked.has(keyOf(type, g.name)))
 
@@ -525,7 +528,7 @@ export function HrClient({ initial, passcode }: { initial: HrRow[]; passcode: st
                       <td className="px-5 py-3">
                         <Badge tone={r.survey_type === 'A' ? 'info' : 'glow'}>{r.survey_type}</Badge>
                       </td>
-                      <td className="px-5 py-3 text-caption text-whitex-soft">{r.assessed_name}</td>
+                      <td className="px-5 py-3 text-caption text-whitex-soft">{shownName(r)}</td>
                       <td className="whitespace-nowrap px-5 py-3 text-right">
                         {confirmDel === r.id ? (
                           <div className="flex justify-end gap-2">
