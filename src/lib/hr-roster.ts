@@ -33,6 +33,13 @@ const DEFS: [branch: string, dept: string, names: string[]][] = [
   ['Global Classic', 'Sales', ['Atheesh', 'Venkat']],
 ]
 const ROLES: Record<string, string> = { Lovely: 'Branch Manager', Saeed: 'Branch Manager', Atheesh: 'Branch Manager' }
+/** Other spellings people actually use for themselves, keyed by the directory name. */
+const ALIASES: Record<string, string[]> = {
+  Osama: ['Usama Manzoor'],
+  Khalid: ['Khaled Galal Elsayed Hassan'],
+  Bilal: ['Hazrat Bilal'],
+  'Zeeshan (Sharjah)': ['Zeeshan Aziz'],
+}
 
 function build(): StaffPerson[] {
   const flat = DEFS.flatMap(([branch, dept, names]) => names.map(n => ({ n, dept, branch })))
@@ -122,18 +129,24 @@ export function matchStaff(typed: string): StaffMatch[] {
   const use = toks.filter(t => !LOW.has(t))
   if (!use.length) return [] // "Syed" or "Mohammed" alone identifies nobody
   const scored = STAFF.map(person => {
-    const ptoks = tokensOf(person.name.replace(/\(.*\)/, ''))
-    let score = 0
-    let exact = false
-    let unmatched = 0
-    for (const t of use) {
-      const best = Math.max(0, ...ptoks.map(p => tokenScore(t, p)))
-      score += best
-      if (best === 3) exact = true
-      if (best === 0) unmatched++
+    // Score against the directory name and every known alias; keep the best
+    const names = [person.name.replace(/\(.*\)/, ''), ...(ALIASES[person.name] ?? [])]
+    let best = { score: 0, ok: false }
+    for (const n of names) {
+      const ptoks = tokensOf(n)
+      let score = 0
+      let exact = false
+      let unmatched = 0
+      for (const t of use) {
+        const s = Math.max(0, ...ptoks.map(p => tokenScore(t, p)))
+        score += s
+        if (s === 3) exact = true
+        if (s === 0) unmatched++
+      }
+      // A near-miss plus an unknown surname is not the same person (unless the alias says so)
+      if (score > best.score) best = { score, ok: exact || unmatched === 0 }
     }
-    // "Usama Manzoor" must not become Osama: a near-miss plus an unknown surname is not the same person
-    return { person, score, sure: false, ok: exact || unmatched === 0 }
+    return { person, score: best.score, sure: false, ok: best.ok }
   })
     .filter(m => m.score > 0)
     .sort((a, b) => b.score - a.score || a.person.name.localeCompare(b.person.name))
